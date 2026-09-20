@@ -664,11 +664,14 @@
     setSidebar(!compact);
   });
   one('#role-switch').addEventListener('change', function (event) { setRole(event.target.value, false); });
-  window.addEventListener('hashchange', function () {
-    var page = window.location.hash.replace('#', '');
+  function syncRouteFromLocation() {
+    var page = window.location.hash.replace('#', '') || 'overview';
     var allowed = [].concat(rolePages.merchant, rolePages.operations, rolePages.support);
     if (allowed.indexOf(page) !== -1 && page !== state.page) navigate(page, true);
-  });
+  }
+  window.addEventListener('hashchange', syncRouteFromLocation);
+  window.addEventListener('popstate', syncRouteFromLocation);
+  window.addEventListener('pageshow', syncRouteFromLocation);
 
   one('#rule-search').addEventListener('input', filterRules);
   one('#rule-status-filter').addEventListener('change', filterRules);
@@ -753,7 +756,7 @@
   var initial = window.location.hash.replace('#', '');
   var allPages = [].concat(rolePages.merchant, rolePages.operations, rolePages.support);
   if (allPages.indexOf(initial) !== -1) { setRole(roleForPage(initial), true); navigate(initial, true); }
-  else setRole('merchant', true);
+  else { setRole('merchant', true); navigate('overview', true); }
   var offerMessage = document.createElement('span');
   offerMessage.id = 'offer-preview-message';
   offerMessage.textContent = 'Add this item and get closer to checkout';
