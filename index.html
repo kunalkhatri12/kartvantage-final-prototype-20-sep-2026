@@ -3,17 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="theme-color" content="#0b1728" />
   <meta name="description" content="KartVantage merchant app prototype for purchase rules, cart guidance, plans and settings." />
+  <meta name="application-name" content="KartVantage" />
+  <meta name="apple-mobile-web-app-title" content="KartVantage" />
+  <meta property="og:title" content="KartVantage — Merchant prototype" />
+  <meta property="og:description" content="Interactive KartVantage Shopify app prototype." />
+  <meta property="og:image" content="https://kunalkhatri12.github.io/kartvantage-final-prototype-20-sep-2026/assets/kartvantage-logo-solid.jpg" />
+  <meta name="twitter:card" content="summary" />
   <title>KartVantage — Merchant prototype</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Cpath d='M7 9h3l2 11h11l2-8H11' fill='none' stroke='%2395bf47' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='m14 15 2 2 4-5' fill='none' stroke='%2395bf47' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='24' r='1.5' fill='%23fff'/%3E%3Ccircle cx='22' cy='24' r='1.5' fill='%23fff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./styles.css?v=27" />
+  <link rel="icon" type="image/png" href="./assets/kartvantage-favicon.png?v=brand-20260920b" />
+  <link rel="shortcut icon" type="image/png" href="./assets/kartvantage-favicon.png?v=brand-20260920b" />
+  <link rel="apple-touch-icon" href="./assets/kartvantage-favicon.png?v=brand-20260920b" />
+  <link rel="manifest" href="./site.webmanifest?v=brand-20260920" />
+  <link rel="stylesheet" href="./styles.css?v=28" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
       <button class="icon-button menu-button" id="menu-toggle" aria-label="Close navigation" aria-controls="sidebar" aria-expanded="true">☰</button>
-      <div class="app-context"><strong>KartVantage</strong><span class="badge">dev</span></div>
+      <div class="app-context"><img class="kv-wordmark" src="./assets/kartvantage-logo-horizontal.png?v=brand-20260920" alt="KartVantage" /><span class="badge">dev</span></div>
       <div class="topbar-center"><span class="badge">Prototype</span><span>Sample data — no Shopify data is changed</span></div>
       <div class="topbar-actions">
         <label class="role-control" for="role-switch"><span>View</span><select id="role-switch" aria-label="Prototype role"><option value="merchant">Merchant</option><option value="operations">Operations</option><option value="support">Support</option></select></label>
@@ -30,7 +39,7 @@
       <div class="nav-label native-label">Sales channels</div>
       <div class="shopify-links compact"><button><span>ϟ</span>Agentic</button><button><span>▣</span>Online Store</button></div>
       <div class="nav-label native-label">Apps</div>
-      <div class="app-tree-head"><span class="kv-mini">✓</span><strong>KartVantage</strong><span class="badge published">dev</span></div>
+      <div class="app-tree-head"><span class="kv-symbol" aria-hidden="true"><img src="./assets/kartvantage-favicon.png?v=brand-20260920b" alt="" /></span><strong>KartVantage</strong><span class="badge published">dev</span></div>
       <nav class="nav-list app-tree" aria-label="KartVantage navigation" data-role-nav="merchant">
         <button class="nav-item active" data-page="overview"><span class="nav-icon">⌘</span>Overview</button>
         <button class="nav-item" data-page="rules"><span class="nav-icon">☷</span>Product Rules <em>4</em></button>

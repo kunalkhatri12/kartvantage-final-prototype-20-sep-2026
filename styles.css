@@ -46,7 +46,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 20px; transition: left .2s ease;
 }
 .app-context { display: flex; align-items: center; gap: 9px; color: var(--navy); }
-.app-context strong { font-size: 15px; }
+.kv-wordmark { display: block; width: 116px; height: 42px; object-fit: contain; object-position: left center; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: calc(var(--sidebar) - 20px); }
 .brand-mark { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--navy); color: var(--accent-brand); }
 .brand-mark svg { width: 24px; height: 24px; }
@@ -75,7 +75,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .nav-label.native-label { color: #666; text-transform: none; letter-spacing: 0; font-size: 12px; padding-top: 15px; padding-bottom: 6px; }
 .app-tree-head { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 5px 10px; color: #2d2d2d; }
 .app-tree-head strong { font-size: 14px; }
-.kv-mini { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; color: #78a62b; font-weight: 850; }
+.kv-symbol { width: 22px; height: 22px; display: block; overflow: hidden; flex: 0 0 22px; }
+.kv-symbol img { display: block; width: 22px; height: 22px; object-fit: cover; }
 .nav-list { display: grid; gap: 4px; }
 .app-tree { margin-left: 17px; padding-left: 10px; border-left: 1px solid #c7c7c7; gap: 2px; }
 .app-tree .nav-item { grid-template-columns: 1fr auto; }
@@ -609,6 +610,7 @@ tbody tr:hover { background: #fbfcfc; }
 @media (max-width: 760px) {
   :root { --sidebar: 270px; }
   .topbar { height: 54px; padding: 0 12px; left: 0; gap: 7px; }
+  .kv-wordmark { width: 98px; height: 38px; }
   .main { padding-top: 54px; }
   .shopify-brand { min-height: 54px; }
   .mobile-overlay { inset: 54px 0 0; }

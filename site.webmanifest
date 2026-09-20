@@ -1,0 +1,17 @@
+{
+  "name": "KartVantage",
+  "short_name": "KartVantage",
+  "description": "KartVantage Shopify app prototype",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f7",
+  "theme_color": "#0b1728",
+  "icons": [
+    {
+      "src": "./assets/kartvantage-favicon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
