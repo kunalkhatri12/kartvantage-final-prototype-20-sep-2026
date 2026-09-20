@@ -8,6 +8,7 @@
     r_01K5Q9J6C2V8N4M7T1X3P0HYDZ: 'cart',
     r_01K5Q9K1F7R3M8V2N6X4T0YPHA: 'order'
   };
+  var settingsTabLabels = { general: 'General', storefront: 'Storefront', notifications: 'Notifications', activity: 'Health & activity', privacy: 'Privacy & data', support: 'Support' };
   var rolePages = {
     merchant: ['overview', 'rules', 'config', 'cart', 'plans', 'settings', 'insights', 'health'],
     operations: ['control', 'merchants', 'success', 'incidents'],
@@ -335,6 +336,18 @@
     filterRules();
   }
 
+  function closeSettingsMobileMenu() {
+    one('#settings-mobile-menu').classList.add('hide');
+    one('#settings-mobile-trigger').setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleSettingsMobileMenu() {
+    var menu = one('#settings-mobile-menu');
+    var open = menu.classList.contains('hide');
+    menu.classList.toggle('hide', !open);
+    one('#settings-mobile-trigger').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   function showSettingsTab(tab) {
     state.settingsTab = tab;
     navigate('settings');
@@ -344,6 +357,8 @@
     all('[data-settings-tab]').forEach(function (button) {
       button.classList.toggle('active', button.getAttribute('data-settings-tab') === tab);
     });
+    setText('#settings-mobile-current', settingsTabLabels[tab] || 'General');
+    closeSettingsMobileMenu();
   }
 
   function openConfig(type, ruleId, fromRoute) {
@@ -508,6 +523,7 @@
 
   document.addEventListener('click', function (event) {
     if (event.target.closest('.custom-select')) return;
+    if (!event.target.closest('.settings-mobile-nav')) closeSettingsMobileMenu();
     var pageButton = event.target.closest('[data-page]');
     if (pageButton) {
       var page = pageButton.getAttribute('data-page');
@@ -649,7 +665,8 @@
     var action = event.target.closest('[data-action]');
     if (!action) return;
     var name = action.getAttribute('data-action');
-    if (name === 'new-rule') openNewRuleChooser();
+    if (name === 'toggle-settings-menu') toggleSettingsMobileMenu();
+    else if (name === 'new-rule') openNewRuleChooser();
     else if (name === 'close-new-rule') cancelNewRuleChooser();
     else if (name === 'support' || name === 'contact-support') showSettingsTab('support');
     else if (name === 'save-draft') toast('Draft saved. Nothing has been published.');
@@ -808,6 +825,7 @@
   one('#new-rule-modal').addEventListener('click', function (event) { if (event.target === one('#new-rule-modal')) cancelNewRuleChooser(); });
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
+    closeSettingsMobileMenu();
     if (!one('#publish-modal').classList.contains('hide')) closePublishReview();
     if (!one('#new-rule-modal').classList.contains('hide')) cancelNewRuleChooser();
   });
