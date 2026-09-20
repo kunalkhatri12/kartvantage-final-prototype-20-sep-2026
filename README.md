@@ -12,4 +12,4 @@ This prototype covers the merchant, admin, CRM, and support experiences, includi
 
 ## Live preview
 
-The public GitHub Pages preview is available from this repository's **Deployments** section.
+[Open the public KartVantage prototype](https://kunalkhatri12.github.io/kartvantage-final-prototype-20-sep-2026/)
