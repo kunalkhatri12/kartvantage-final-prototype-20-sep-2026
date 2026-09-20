@@ -1,7 +1,13 @@
 (function () {
   'use strict';
 
-  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', cartModule: 'progress', cartState: 'issue', cartQuantity: 2, cartSubtotal: 29, offerAdded: false, publishOutcome: 'confirmed', allRulesSelected: false };
+  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, cartModule: 'progress', cartState: 'issue', cartQuantity: 2, cartSubtotal: 29, offerAdded: false, publishOutcome: 'confirmed', allRulesSelected: false };
+  var persistedRuleTypes = {
+    r_01K5Q9G7E4M2X8N6P3T0VYH1CZ: 'order',
+    r_01K5Q9H2A7D4M8R6X1N3T0VPYF: 'product',
+    r_01K5Q9J6C2V8N4M7T1X3P0HYDZ: 'cart',
+    r_01K5Q9K1F7R3M8V2N6X4T0YPHA: 'order'
+  };
   var rolePages = {
     merchant: ['overview', 'rules', 'config', 'cart', 'plans', 'settings', 'insights', 'health'],
     operations: ['control', 'merchants', 'success', 'incidents'],
@@ -239,12 +245,34 @@
     one('#create-rule-button').classList.toggle('hide', tab === 'test');
   }
 
-  function openNewRuleChooser() {
+  function createOpaqueRuleId() {
+    var raw = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2);
+    return 'r_' + raw.slice(0, 26).toUpperCase();
+  }
+
+  function rememberRuleType(ruleId, type) {
+    persistedRuleTypes[ruleId] = type;
+    try { window.sessionStorage.setItem('kv-rule-type:' + ruleId, type); } catch (error) { /* Prototype still works without storage. */ }
+  }
+
+  function ruleTypeForId(ruleId) {
+    if (persistedRuleTypes[ruleId]) return persistedRuleTypes[ruleId];
+    try { return window.sessionStorage.getItem('kv-rule-type:' + ruleId); } catch (error) { return null; }
+  }
+
+  function openNewRuleChooser(ruleId, fromRoute) {
+    state.pendingRuleId = ruleId || createOpaqueRuleId();
     one('#new-rule-modal').classList.remove('hide');
     one('#new-rule-modal [data-action="close-new-rule"]').focus();
+    if (!fromRoute) window.location.hash = 'rules/' + state.pendingRuleId + '/new';
   }
 
   function closeNewRuleChooser() { one('#new-rule-modal').classList.add('hide'); }
+  function cancelNewRuleChooser() {
+    closeNewRuleChooser();
+    state.pendingRuleId = null;
+    navigate('rules');
+  }
 
   function visibleRuleRows() {
     return all('#rules-table tr').filter(function (row) { return !row.classList.contains('hide') && !row.classList.contains('archived'); });
@@ -318,9 +346,12 @@
     });
   }
 
-  function openConfig(type) {
+  function openConfig(type, ruleId, fromRoute) {
     closeNewRuleChooser();
     state.configType = type;
+    state.ruleId = ruleId || state.pendingRuleId || createOpaqueRuleId();
+    state.pendingRuleId = null;
+    rememberRuleType(state.ruleId, type);
     var data = config[type];
     setText('#config-title', data.title);
     setText('#config-subtitle', data.subtitle);
@@ -334,7 +365,8 @@
     setText('#preview-message-title', data.previewTitle);
     setText('#preview-message-body', data.previewBody);
     updatePreviewFromMinimum();
-    navigate('config');
+    navigate('config', true);
+    if (!fromRoute) window.location.hash = 'rules/' + state.ruleId + '/edit';
   }
 
   function updatePreviewFromMinimum() {
@@ -489,7 +521,11 @@
     if (tabButton) { showRulesTab(tabButton.getAttribute('data-rules-tab')); return; }
 
     var configButton = event.target.closest('[data-config]');
-    if (configButton) { openConfig(configButton.getAttribute('data-config')); return; }
+    if (configButton) {
+      var configRow = configButton.closest('[data-rule-id]');
+      openConfig(configButton.getAttribute('data-config'), configRow ? configRow.getAttribute('data-rule-id') : null);
+      return;
+    }
 
     var settingsButton = event.target.closest('[data-settings-tab]');
     if (settingsButton) { showSettingsTab(settingsButton.getAttribute('data-settings-tab')); return; }
@@ -544,7 +580,7 @@
     }
 
     var newCategory = event.target.closest('[data-new-rule-category]');
-    if (newCategory) { openConfig(newCategory.getAttribute('data-new-rule-category')); return; }
+    if (newCategory) { openConfig(newCategory.getAttribute('data-new-rule-category'), state.pendingRuleId); return; }
 
     var rowAction = event.target.closest('[data-rule-action]');
     if (rowAction) { applyRuleAction(rowAction.closest('tr'), rowAction.getAttribute('data-rule-action')); return; }
@@ -614,7 +650,7 @@
     if (!action) return;
     var name = action.getAttribute('data-action');
     if (name === 'new-rule') openNewRuleChooser();
-    else if (name === 'close-new-rule') closeNewRuleChooser();
+    else if (name === 'close-new-rule') cancelNewRuleChooser();
     else if (name === 'support' || name === 'contact-support') showSettingsTab('support');
     else if (name === 'save-draft') toast('Draft saved. Nothing has been published.');
     else if (name === 'publish') openPublishReview();
@@ -664,10 +700,32 @@
     setSidebar(!compact);
   });
   one('#role-switch').addEventListener('change', function (event) { setRole(event.target.value, false); });
+  function routeFromLocation() {
+    var value = window.location.hash.replace('#', '') || 'overview';
+    var newRuleMatch = value.match(/^rules\/([A-Za-z0-9_-]+)\/new$/);
+    if (newRuleMatch) return { page: 'new-rule', ruleId: newRuleMatch[1] };
+    var editRuleMatch = value.match(/^rules\/([A-Za-z0-9_-]+)\/edit$/);
+    if (editRuleMatch) return { page: 'config', ruleId: editRuleMatch[1] };
+    return { page: value };
+  }
+
   function syncRouteFromLocation() {
-    var page = window.location.hash.replace('#', '') || 'overview';
+    var route = routeFromLocation();
+    if (route.page === 'new-rule') {
+      if (state.page !== 'rules') navigate('rules', true);
+      if (state.pendingRuleId !== route.ruleId || one('#new-rule-modal').classList.contains('hide')) openNewRuleChooser(route.ruleId, true);
+      return;
+    }
+    if (route.page === 'config') {
+      var configType = ruleTypeForId(route.ruleId);
+      if (configType) openConfig(configType, route.ruleId, true);
+      else { navigate('rules', true); window.location.hash = 'rules'; toast('That rule is not available in this prototype session.'); }
+      return;
+    }
+    closeNewRuleChooser();
+    state.pendingRuleId = null;
     var allowed = [].concat(rolePages.merchant, rolePages.operations, rolePages.support);
-    if (allowed.indexOf(page) !== -1 && page !== state.page) navigate(page, true);
+    if (allowed.indexOf(route.page) !== -1 && route.page !== state.page) navigate(route.page, true);
   }
   window.addEventListener('hashchange', syncRouteFromLocation);
   window.addEventListener('popstate', syncRouteFromLocation);
@@ -747,16 +805,13 @@
   setSidebar(!sidebarCompact);
   all('.switch').forEach(function (button) { button.setAttribute('aria-pressed', button.classList.contains('on') ? 'true' : 'false'); });
   one('#publish-modal').addEventListener('click', function (event) { if (event.target === one('#publish-modal')) closePublishReview(); });
-  one('#new-rule-modal').addEventListener('click', function (event) { if (event.target === one('#new-rule-modal')) closeNewRuleChooser(); });
+  one('#new-rule-modal').addEventListener('click', function (event) { if (event.target === one('#new-rule-modal')) cancelNewRuleChooser(); });
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
     if (!one('#publish-modal').classList.contains('hide')) closePublishReview();
-    if (!one('#new-rule-modal').classList.contains('hide')) closeNewRuleChooser();
+    if (!one('#new-rule-modal').classList.contains('hide')) cancelNewRuleChooser();
   });
-  var initial = window.location.hash.replace('#', '');
-  var allPages = [].concat(rolePages.merchant, rolePages.operations, rolePages.support);
-  if (allPages.indexOf(initial) !== -1) { setRole(roleForPage(initial), true); navigate(initial, true); }
-  else { setRole('merchant', true); navigate('overview', true); }
+  syncRouteFromLocation();
   var offerMessage = document.createElement('span');
   offerMessage.id = 'offer-preview-message';
   offerMessage.textContent = 'Add this item and get closer to checkout';
