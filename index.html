@@ -7,7 +7,7 @@
   <meta name="description" content="KartVantage merchant app prototype for purchase rules, cart guidance, plans and settings." />
   <title>KartVantage — Merchant prototype</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Cpath d='M7 9h3l2 11h11l2-8H11' fill='none' stroke='%2395bf47' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='m14 15 2 2 4-5' fill='none' stroke='%2395bf47' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='24' r='1.5' fill='%23fff'/%3E%3Ccircle cx='22' cy='24' r='1.5' fill='%23fff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./styles.css?v=24" />
+  <link rel="stylesheet" href="./styles.css?v=27" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -194,8 +194,8 @@
         <div class="settings-layout">
           <div class="settings-mobile-nav">
             <span class="settings-mobile-label">Settings section</span>
-            <button type="button" class="settings-mobile-trigger" id="settings-mobile-trigger" data-action="toggle-settings-menu" aria-expanded="false" aria-controls="settings-mobile-menu"><span id="settings-mobile-current">General</span><span aria-hidden="true">⌄</span></button>
-            <div class="settings-mobile-menu hide" id="settings-mobile-menu" role="menu"><button class="active" role="menuitem" data-settings-tab="general">General</button><button role="menuitem" data-settings-tab="storefront">Storefront</button><button role="menuitem" data-settings-tab="notifications">Notifications</button><button role="menuitem" data-settings-tab="activity">Health & activity</button><button role="menuitem" data-settings-tab="privacy">Privacy & data</button><button role="menuitem" data-settings-tab="support">Support</button></div>
+            <button type="button" class="settings-mobile-trigger" id="settings-mobile-trigger" data-action="toggle-settings-menu" aria-expanded="false" aria-controls="settings-mobile-menu"><span id="settings-mobile-current">General</span><span class="settings-mobile-chevron" aria-hidden="true"></span></button>
+            <div class="settings-mobile-menu" id="settings-mobile-menu" role="menu" aria-hidden="true" inert><button class="active" role="menuitem" data-settings-tab="general">General</button><button role="menuitem" data-settings-tab="storefront">Storefront</button><button role="menuitem" data-settings-tab="notifications">Notifications</button><button role="menuitem" data-settings-tab="activity">Health & activity</button><button role="menuitem" data-settings-tab="privacy">Privacy & data</button><button role="menuitem" data-settings-tab="support">Support</button></div>
           </div>
           <nav class="card settings-nav"><button class="active" data-settings-tab="general">General</button><button data-settings-tab="storefront">Storefront</button><button data-settings-tab="notifications">Notifications</button><button data-settings-tab="activity">Health & activity</button><button data-settings-tab="privacy">Privacy & data</button><button data-settings-tab="support">Support</button></nav>
           <div class="settings-stack">
@@ -273,6 +273,6 @@
     </div>
   </div>
   <div id="toast-region" aria-live="polite"></div>
-  <script src="./app.js?v=24"></script>
+  <script src="./app.js?v=27"></script>
 </body>
 </html>

@@ -186,7 +186,34 @@
     item.className = 'toast';
     item.textContent = message;
     region.appendChild(item);
-    window.setTimeout(function () { item.remove(); }, 3200);
+    window.setTimeout(function () {
+      item.classList.add('toast-out');
+      window.setTimeout(function () { item.remove(); }, 200);
+    }, 3000);
+  }
+
+  function showModal(selector, focusSelector) {
+    var modal = one(selector);
+    window.clearTimeout(modal._closeTimer);
+    modal._returnFocus = document.activeElement;
+    modal.removeAttribute('inert');
+    modal.classList.remove('hide', 'is-closing');
+    modal.setAttribute('aria-hidden', 'false');
+    var focusTarget = focusSelector ? modal.querySelector(focusSelector) : null;
+    if (focusTarget) focusTarget.focus();
+  }
+
+  function hideModal(selector) {
+    var modal = one(selector);
+    if (modal.classList.contains('hide') || modal.classList.contains('is-closing')) return;
+    modal.classList.add('is-closing');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute('inert', '');
+    modal._closeTimer = window.setTimeout(function () {
+      modal.classList.add('hide');
+      modal.classList.remove('is-closing');
+      if (modal._returnFocus && document.contains(modal._returnFocus)) modal._returnFocus.focus();
+    }, 200);
   }
 
   var sidebarCompact = window.innerWidth <= 980;
@@ -263,12 +290,11 @@
 
   function openNewRuleChooser(ruleId, fromRoute) {
     state.pendingRuleId = ruleId || createOpaqueRuleId();
-    one('#new-rule-modal').classList.remove('hide');
-    one('#new-rule-modal [data-action="close-new-rule"]').focus();
+    showModal('#new-rule-modal', '[data-action="close-new-rule"]');
     if (!fromRoute) window.location.hash = 'rules/' + state.pendingRuleId + '/new';
   }
 
-  function closeNewRuleChooser() { one('#new-rule-modal').classList.add('hide'); }
+  function closeNewRuleChooser() { hideModal('#new-rule-modal'); }
   function cancelNewRuleChooser() {
     closeNewRuleChooser();
     state.pendingRuleId = null;
@@ -337,14 +363,20 @@
   }
 
   function closeSettingsMobileMenu() {
-    one('#settings-mobile-menu').classList.add('hide');
+    var menu = one('#settings-mobile-menu');
+    menu.classList.remove('open');
+    menu.setAttribute('aria-hidden', 'true');
+    menu.setAttribute('inert', '');
     one('#settings-mobile-trigger').setAttribute('aria-expanded', 'false');
   }
 
   function toggleSettingsMobileMenu() {
     var menu = one('#settings-mobile-menu');
-    var open = menu.classList.contains('hide');
-    menu.classList.toggle('hide', !open);
+    var open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (open) menu.removeAttribute('inert');
+    else menu.setAttribute('inert', '');
     one('#settings-mobile-trigger').setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
@@ -414,11 +446,10 @@
     one('#publish-state').classList.add('hide');
     one('[data-action="confirm-publish"]').disabled = false;
     one('[data-action="confirm-publish"]').textContent = 'Confirm & publish';
-    one('#publish-modal').classList.remove('hide');
-    one('#publish-modal [data-action="close-publish"]').focus();
+    showModal('#publish-modal', '[data-action="close-publish"]');
   }
 
-  function closePublishReview() { one('#publish-modal').classList.add('hide'); }
+  function closePublishReview() { hideModal('#publish-modal'); }
 
   function renderPublishOutcome(outcome) {
     var outcomes = {
