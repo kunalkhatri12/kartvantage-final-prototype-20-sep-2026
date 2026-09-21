@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, rulePreviewState: 'minimum', rulePreviewQuantity: 2, ruleResourceIds: [], cartModule: 'progress', cartWorkspace: 'builder', drawerMode: 'theme', cartState: 'issue', cartQuantity: 2, cartSubtotal: 50, cartDiscount: 0, offerAdded: false, upsellIndex: 0, upsellSource: 'products', upsellProducts: [{ id: 'p_canvas', name: 'Canvas tote', price: 24 }, { id: 'p_mug', name: 'Travel mug', price: 18 }, { id: 'p_wrap', name: 'Gift wrap', price: 6 }], resourcePickerContext: 'upsell', resourcePickerType: 'products', resourcePickerSelection: [], publishOutcome: 'confirmed', allRulesSelected: false };
+  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, rulePreviewState: 'minimum', rulePreviewQuantity: 2, ruleResourceIds: [], cartModule: 'progress', cartWorkspace: 'builder', drawerMode: 'theme', previewSurface: 'theme', cartDevice: 'desktop', cartState: 'issue', cartQuantity: 2, cartSubtotal: 50, cartDiscount: 0, offerAdded: false, upsellIndex: 0, upsellSource: 'products', upsellProducts: [{ id: 'p_canvas', name: 'Canvas tote', price: 24 }, { id: 'p_mug', name: 'Travel mug', price: 18 }, { id: 'p_wrap', name: 'Gift wrap', price: 6 }], resourcePickerContext: 'upsell', resourcePickerType: 'products', resourcePickerSelection: [], publishOutcome: 'confirmed', allRulesSelected: false };
   var resourceProducts = [
     { id: 'p_canvas', name: 'Canvas tote', price: 24, detail: 'Accessories · 18 available' },
     { id: 'p_mug', name: 'Travel mug', price: 18, detail: 'Drinkware · 32 available' },
@@ -664,6 +664,31 @@
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function setCartDevice(device) {
+    state.cartDevice = device;
+    all('[data-cart-device]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-device') === device); });
+    one('#cart-storefront').classList.toggle('mobile', device === 'mobile');
+    one('#theme-storefront').classList.toggle('mobile', device === 'mobile');
+    if (one('#preview-device-select')) one('#preview-device-select').value = device;
+  }
+
+  function setPreviewSurface(surface) {
+    state.previewSurface = surface;
+    all('[data-preview-surface]').forEach(function (button) { var selected = button.getAttribute('data-preview-surface') === surface; button.classList.toggle('active', selected); if (button.getAttribute('role') === 'tab') button.setAttribute('aria-selected', selected ? 'true' : 'false'); });
+    one('#theme-preview-pane').classList.toggle('hide', surface === 'kartvantage');
+    one('#kv-preview-pane').classList.toggle('hide', surface === 'theme');
+    one('#drawer-comparison-stage').classList.toggle('compare', surface === 'compare');
+    one('.cart-builder-layout').classList.toggle('compare-active', surface === 'compare');
+    setText('#preview-mode-label', surface === 'theme' ? 'Dawn theme snapshot' : surface === 'kartvantage' ? 'KartVantage draft' : 'Synchronized side-by-side comparison');
+  }
+
+  function updateDrawerModeUI() {
+    all('[data-drawer-mode-panel]').forEach(function (panel) { panel.classList.toggle('hide', panel.getAttribute('data-drawer-mode-panel') !== state.drawerMode); });
+    all('.kv-only-widget').forEach(function (widget) { widget.classList.toggle('hide', state.drawerMode === 'theme'); });
+    setText('#widget-mode-note', state.drawerMode === 'theme' ? 'Theme structure stays read-only. Add and arrange compatible KartVantage widgets.' : 'Configure the full KartVantage drawer structure, content and widgets.');
+    one('#theme-colour-switch').disabled = state.drawerMode === 'theme';
+  }
+
   function renderCartPreview() {
     var progressEnabled = one('[data-module-switch="progress"]').classList.contains('on');
     var offerEnabled = one('[data-module-switch="offer"]').classList.contains('on');
@@ -719,9 +744,23 @@
     one('#populated-cart').classList.toggle('hide', state.cartState === 'empty' || state.cartState === 'loading' || state.cartState === 'error');
     one('#drawer-loading').classList.toggle('hide', state.cartState !== 'loading');
     one('#drawer-error').classList.toggle('hide', state.cartState !== 'error');
-    setText('#preview-mode-label', state.drawerMode === 'theme' ? 'Theme drawer + KartVantage widgets' : 'KartVantage customizable drawer');
+    setText('#theme-cart-count', String(state.cartQuantity));
+    setText('#theme-preview-quantity', String(state.cartQuantity));
+    setText('#theme-subtotal', '$' + Math.max(0, state.cartSubtotal - state.cartDiscount).toFixed(2) + ' USD');
+    setText('#theme-shipping-message', valid ? 'Free shipping unlocked' : '$' + remaining.toFixed(2) + ' away from free shipping');
+    one('#theme-progress-fill').style.width = Math.min(100, (state.cartSubtotal / 75) * 100) + '%';
+    setText('#theme-offer-message', cartConfig.offer.message.replace(/{{product}}/g, offer.name));
+    one('#theme-progress-widget').classList.toggle('hide', !progressEnabled);
+    one('#theme-upsell-widget').classList.toggle('hide', !offerEnabled || state.offerAdded);
+    one('#theme-summary-widget').classList.toggle('hide', !summaryEnabled);
+    var themeAlertSwitch = one('[data-preview-widget="alerts"]');
+    one('#theme-rule-alert').classList.toggle('hide', themeAlertSwitch && !themeAlertSwitch.classList.contains('on'));
+    one('#theme-rule-alert').classList.toggle('success', valid);
+    one('#theme-rule-alert').querySelector('span').textContent = valid ? 'All active purchase rules are satisfied.' : 'Minimum order value is $50.00.';
+    one('#theme-checkout').disabled = !state.cartQuantity;
+    one('#theme-checkout').style.opacity = state.cartQuantity ? '1' : '.48';
     var drawer = one('#cart-storefront');
-    drawer.classList.toggle('kv-drawer', state.drawerMode === 'kartvantage');
+    drawer.classList.add('kv-drawer');
     drawer.style.setProperty('--drawer-bg', one('#drawer-bg').value);
     drawer.style.setProperty('--drawer-header-bg', one('#drawer-header-bg').value);
     drawer.style.setProperty('--drawer-primary', one('#drawer-primary').value);
@@ -885,8 +924,13 @@
 
     var cartDevice = event.target.closest('[data-cart-device]');
     if (cartDevice) {
-      all('[data-cart-device]').forEach(function (button) { button.classList.toggle('active', button === cartDevice); });
-      one('#cart-storefront').classList.toggle('mobile', cartDevice.getAttribute('data-cart-device') === 'mobile');
+      setCartDevice(cartDevice.getAttribute('data-cart-device'));
+      return;
+    }
+
+    var previewSurface = event.target.closest('[data-preview-surface]');
+    if (previewSurface) {
+      setPreviewSurface(previewSurface.getAttribute('data-preview-surface'));
       return;
     }
 
@@ -946,7 +990,9 @@
 
     var insightRange = event.target.closest('[data-page-panel="insights"] .header-actions .btn');
     if (insightRange) {
-      insightRange.textContent = insightRange.textContent.indexOf('30') !== -1 ? 'Last 7 days ⌄' : insightRange.textContent.indexOf('7') !== -1 ? 'Last 90 days ⌄' : 'Last 30 days ⌄';
+      var insightLabel = insightRange.querySelector('.range-label');
+      var currentRange = insightLabel ? insightLabel.textContent : insightRange.textContent;
+      if (insightLabel) insightLabel.textContent = currentRange.indexOf('30') !== -1 ? 'Last 7 days' : currentRange.indexOf('7') !== -1 ? 'Last 90 days' : 'Last 30 days';
       toast('Insight range updated using sample data.'); return;
     }
 
@@ -974,6 +1020,8 @@
     else if (name === 'unpublish-cart') { setText('#cart-publish-badge', 'Disabled'); toast('Cart Drawer features disabled in the prototype. The theme drawer remains available.'); }
     else if (name === 'rollback-cart') toast('Version 3 restored as a new draft. Review it before publishing.');
     else if (name === 'theme-help') toast('Compatibility request prepared with theme name, version and diagnostic snapshot.');
+    else if (name === 'refresh-theme-preview') { var captured = new Date(); setText('#theme-preview-time', 'captured at ' + captured.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); setText('#theme-captured-time', 'Just now'); one('#theme-preview-pane').classList.remove('snapshot-refreshed'); window.requestAnimationFrame(function () { one('#theme-preview-pane').classList.add('snapshot-refreshed'); }); renderCartPreview(); toast('Theme snapshot refreshed using the current test cart.'); }
+    else if (name === 'open-theme-editor') toast('Production handoff: open Shopify theme editor to change theme-owned layout and styling.');
     else if (name === 'reset-theme') { resetDrawerDesign(); toast('Theme defaults restored.'); }
     else if (name === 'reset-test-cart') { resetTestCart(); toast('Test cart reset.'); }
     else if (name === 'apply-test-discount') { one('#preview-discount-input').value = one('#test-cart-discount').value || 'SAVE10'; state.cartDiscount = 5; one('#discount-result').classList.remove('hide'); renderCartPreview(); toast('Test discount applied.'); }
@@ -1116,8 +1164,9 @@
     input.addEventListener('change', function () {
       state.drawerMode = input.value;
       all('.mode-option').forEach(function (option) { option.classList.toggle('active', !!option.querySelector('input:checked')); });
-      setText('#compatibility-copy', input.value === 'theme' ? 'App embed supported. Widget placement varies by theme drawer structure.' : 'KartVantage drawer will replace the visible theme drawer only after publication.');
-      one('#theme-colour-switch').disabled = input.value === 'theme';
+      setText('#compatibility-copy', input.value === 'theme' ? 'Theme mode supports progress, rule alerts, summary and upsells. Theme structure remains read-only.' : 'KartVantage mode unlocks the complete design, layout and widget system.');
+      updateDrawerModeUI();
+      setPreviewSurface(input.value === 'theme' ? 'theme' : 'kartvantage');
       renderCartPreview();
       toast(input.value === 'theme' ? 'Existing theme drawer preserved.' : 'KartVantage drawer selected for this draft.');
     });
@@ -1132,7 +1181,7 @@
   ['#cart-style', '#cart-alignment', '#drawer-font', '#drawer-button-weight', '#quantity-style', '#preview-state-select', '#preview-device-select'].forEach(function (selector) {
     one(selector).addEventListener('change', function () {
       if (selector === '#preview-state-select') state.cartState = one(selector).value;
-      if (selector === '#preview-device-select') { var mobile = one(selector).value === 'mobile'; one('#cart-storefront').classList.toggle('mobile', mobile); all('[data-cart-device]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-device') === one(selector).value); }); }
+      if (selector === '#preview-device-select') setCartDevice(one(selector).value);
       renderCartPreview();
     });
   });
@@ -1174,6 +1223,7 @@
   });
 
   enhanceSelects();
+  all('.chevron').forEach(function (chevron) { chevron.textContent = ''; chevron.setAttribute('aria-hidden', 'true'); });
   setSidebar(!sidebarCompact);
   all('.switch').forEach(function (button) { button.setAttribute('aria-pressed', button.classList.contains('on') ? 'true' : 'false'); });
   one('#publish-modal').addEventListener('click', function (event) { if (event.target === one('#publish-modal')) closePublishReview(); });
@@ -1188,6 +1238,9 @@
   });
   syncRouteFromLocation();
   showCartWorkspace('builder');
+  updateDrawerModeUI();
+  setCartDevice('desktop');
+  setPreviewSurface('theme');
   renderCartPreview();
   window.setInterval(function () {
     if (state.page !== 'cart' || state.upsellProducts.length < 2 || state.offerAdded || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
