@@ -1,7 +1,20 @@
 (function () {
   'use strict';
 
-  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, cartModule: 'progress', cartState: 'issue', cartQuantity: 2, cartSubtotal: 29, offerAdded: false, publishOutcome: 'confirmed', allRulesSelected: false };
+  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, rulePreviewState: 'minimum', rulePreviewQuantity: 2, ruleResourceIds: [], cartModule: 'progress', cartWorkspace: 'builder', drawerMode: 'theme', cartState: 'issue', cartQuantity: 2, cartSubtotal: 50, cartDiscount: 0, offerAdded: false, upsellIndex: 0, upsellSource: 'products', upsellProducts: [{ id: 'p_canvas', name: 'Canvas tote', price: 24 }, { id: 'p_mug', name: 'Travel mug', price: 18 }, { id: 'p_wrap', name: 'Gift wrap', price: 6 }], resourcePickerContext: 'upsell', resourcePickerType: 'products', resourcePickerSelection: [], publishOutcome: 'confirmed', allRulesSelected: false };
+  var resourceProducts = [
+    { id: 'p_canvas', name: 'Canvas tote', price: 24, detail: 'Accessories · 18 available' },
+    { id: 'p_mug', name: 'Travel mug', price: 18, detail: 'Drinkware · 32 available' },
+    { id: 'p_wrap', name: 'Gift wrap', price: 6, detail: 'Services · Available' },
+    { id: 'p_cap', name: 'Summer cap', price: 22, detail: 'Apparel · 14 available' },
+    { id: 'p_towel', name: 'Beach towel', price: 28, detail: 'Home · 11 available' },
+    { id: 'p_bottle', name: 'Water bottle', price: 16, detail: 'Drinkware · 27 available' }
+  ];
+  var resourceCollections = [
+    { id: 'c_summer', name: 'Summer essentials', count: 7, products: ['p_cap', 'p_towel', 'p_bottle', 'p_canvas'] },
+    { id: 'c_best', name: 'Best sellers', count: 12, products: ['p_mug', 'p_canvas', 'p_bottle', 'p_wrap'] },
+    { id: 'c_gifts', name: 'Gift ideas', count: 6, products: ['p_wrap', 'p_mug', 'p_canvas', 'p_towel'] }
+  ];
   var persistedRuleTypes = {
     r_01K5Q9G7E4M2X8N6P3T0VYH1CZ: 'order',
     r_01K5Q9H2A7D4M8R6X1N3T0VPYF: 'product',
@@ -20,11 +33,13 @@
       title: 'Order value limits',
       subtitle: 'Control the minimum and maximum eligible cart value.',
       name: 'Order Minimum $50',
-      unit: '$', min: '50', max: '500',
+      unit: '$', min: '50', max: '500', currency: 'USD',
       minHelp: 'Require the eligible cart value to reach this amount.',
       maxHelp: 'Prevent the eligible cart value from exceeding this amount.',
       previewTitle: 'Add $21.00 more to continue',
-      previewBody: 'Your order must reach $50.00 before checkout.'
+      previewBody: 'Your order must reach $50.00 before checkout.',
+      minimumMessage: 'Add {{remaining}} more to continue. Minimum is {{minimum}}.',
+      maximumMessage: 'Reduce your cart. Maximum is {{maximum}}.'
     },
     product: {
       title: 'Product quantity limits',
@@ -34,7 +49,9 @@
       minHelp: 'Require at least this quantity for each eligible product.',
       maxHelp: 'Prevent each eligible product from exceeding this quantity.',
       previewTitle: 'Reduce this item to 4',
-      previewBody: 'You can purchase up to 4 of this product.'
+      previewBody: 'You can purchase up to 4 of this product.',
+      minimumMessage: 'You must purchase at least {{minimum}} of {{product}}.',
+      maximumMessage: 'You can purchase a maximum of {{maximum}} of {{product}}.'
     },
     cart: {
       title: 'Total cart item limits',
@@ -44,13 +61,28 @@
       minHelp: 'Require the cart to contain at least this many items.',
       maxHelp: 'Prevent the cart from containing more than this many items.',
       previewTitle: 'Add 1 more item to continue',
-      previewBody: 'Your cart must contain at least 2 items before checkout.'
+      previewBody: 'Your cart must contain at least 2 items before checkout.',
+      minimumMessage: 'Add {{remaining}} item(s). Minimum is {{minimum}}.',
+      maximumMessage: 'Remove items. Maximum is {{maximum}}; your cart has {{current}}.'
     }
   };
   var cartConfig = {
-    progress: { title: 'Cart Progress', description: 'Display progress toward the closest active rule.', message: "You're {{remaining}} away from checkout", help: 'Use {{remaining}} to show the amount still needed.', style: 'bar', alignment: 'full' },
-    offer: { title: 'Cart Offer', description: 'Recommend an eligible product that helps the shopper meet the rule.', message: 'Add {{product}} and get closer to checkout', help: 'Use {{product}} to show the selected recommendation.', style: 'banner', alignment: 'contained' },
-    summary: { title: 'Cart Summary', description: 'Summarise active purchase-rule status before checkout.', message: '{{status}}', help: 'Use {{status}} to show whether the cart is ready.', style: 'compact', alignment: 'full' }
+    header: { title: 'Cart header', description: 'Configure the drawer title, item count, close icon and divider.', message: 'Your cart', help: 'Use a concise title or optional custom header text.' },
+    items: { title: 'Cart items', description: 'Control product image, title, variants, prices, discounts and properties.', message: 'Cart items', help: 'Cart items remain connected to Shopify cart data.' },
+    quantity: { title: 'Quantity selector', description: 'Set selector style, step, minimum, maximum and validation copy.', message: 'Choose a quantity', help: 'Quantity controls respect active purchase rules.' },
+    remove: { title: 'Remove item', description: 'Choose link or icon treatment and optional confirmation copy.', message: 'Remove item?', help: 'Confirmation is optional and must not block keyboard use.' },
+    progress: { title: 'Free shipping progress', description: 'Display progress toward a free-shipping goal.', message: "You're {{remaining}} away from free shipping", help: 'Use {{remaining}} to show the amount still needed.' },
+    offer: { title: 'Cart upsell', description: 'Recommend selected products or collections using cart context.', message: '{{product}} pairs well with your cart', help: 'Use {{product}} for the selected recommendation.' },
+    summary: { title: 'Order & savings summary', description: 'Show subtotal, discounts, savings and estimated total.', message: 'You are saving {{savings}} today', help: 'Use {{savings}} for total savings.' },
+    discount: { title: 'Discount code', description: 'Let shoppers apply or remove a discount code.', message: 'Add a discount code', help: 'Shopify validates discount availability.' },
+    gift: { title: 'Free gift', description: 'Unlock a gift when configured cart conditions are met.', message: 'You unlocked a free gift!', help: 'Preview locked and unlocked states.' },
+    rewards: { title: 'Rewards & milestones', description: 'Configure ordered cart-value milestones.', message: 'Next reward at {{goal}}', help: 'Use goal and remaining variables.' },
+    addons: { title: 'Cart add-ons', description: 'Offer optional products or services such as gift wrap.', message: 'Add gift wrapping', help: 'Configure add-on product and selection style.' },
+    recommendations: { title: 'Product recommendations', description: 'Show manual or automated product suggestions.', message: 'You may also like', help: 'Select products, collections or an automated source.' },
+    trust: { title: 'Trust message & payment icons', description: 'Reassure shoppers near checkout.', message: 'Secure checkout · Fast shipping · 30-day returns', help: 'Keep trust claims accurate and store-specific.' },
+    content: { title: 'Custom content', description: 'Add store-specific text, image, link or button.', message: 'Orders ship within two business days', help: 'Use concise, accurate storefront content.' },
+    checkout: { title: 'Checkout button', description: 'Configure text, style, full width, total and disabled state.', message: 'Checkout', help: 'Checkout availability continues to follow authoritative validation.' },
+    continue: { title: 'Continue shopping', description: 'Choose link style and destination.', message: 'Continue shopping', help: 'Destination can be previous page, home, collection or a custom URL.' }
   };
 
   function all(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
@@ -174,7 +206,7 @@
   }
 
   function enhanceSelects() {
-    all('select').forEach(enhanceSelect);
+    all('select:not(.visually-hidden)').forEach(enhanceSelect);
     document.addEventListener('click', function (event) {
       if (!event.target.closest('.custom-select')) closeCustomSelects();
     });
@@ -258,6 +290,8 @@
     });
     closeMobileNav();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (page === 'cart') window.setTimeout(renderCartPreview, 0);
+    if (page === 'config') window.setTimeout(renderRulePreview, 0);
     if (page !== 'config' && !fromHash && window.location.hash !== '#' + page) window.location.hash = page;
   }
 
@@ -407,36 +441,89 @@
     all('.unit-prefix').forEach(function (el) { el.textContent = data.unit; });
     one('#minimum-input').value = data.min;
     one('#maximum-input').value = data.max;
+    one('button[data-switch="minimum"]').classList.add('on');
+    one('button[data-switch="minimum"]').setAttribute('aria-pressed', 'true');
+    one('#minimum-field').classList.remove('hide');
+    one('button[data-switch="maximum"]').classList.remove('on');
+    one('button[data-switch="maximum"]').setAttribute('aria-pressed', 'false');
+    one('#maximum-field').classList.add('hide');
     setText('#minimum-help', data.minHelp);
     setText('#maximum-help', data.maxHelp);
-    setText('#preview-message-title', data.previewTitle);
-    setText('#preview-message-body', data.previewBody);
-    updatePreviewFromMinimum();
+    one('#minimum-message').value = data.minimumMessage;
+    one('#maximum-message').value = data.maximumMessage;
+    one('#message-input').value = data.minimumMessage;
+    one('#product-behavior').classList.toggle('hide', type !== 'product');
+    one('#cart-behavior').classList.toggle('hide', type !== 'cart');
+    one('#rule-cart-lines').classList.toggle('hide', type !== 'cart');
+    one('.rule-preview-product').classList.toggle('hide', type === 'cart');
+    setText('#message-variable-help', type === 'cart' ? 'Supported variables: {{minimum}}, {{maximum}}, {{current}}, {{remaining}}.' : type === 'product' ? 'Supported variables: {{minimum}}, {{maximum}}, {{remaining}}, {{product}}.' : 'Supported variables: {{minimum}}, {{maximum}}, {{remaining}}.');
+    state.rulePreviewState = 'minimum';
+    all('[data-rule-preview-state]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-rule-preview-state') === 'minimum'); });
+    one('#rule-status').value = 'draft';
+    syncCustomSelect(one('#rule-status'));
+    renderRulePreview();
     navigate('config', true);
     if (!fromRoute) window.location.hash = 'rules/' + state.ruleId + '/edit';
   }
 
-  function updatePreviewFromMinimum() {
-    var type = state.configType;
-    var value = one('#minimum-input').value || config[type].min;
-    if (type === 'order') {
-      var remaining = Math.max(0, Number(value) - 29).toFixed(2);
-      setText('#preview-message-title', 'Add $' + remaining + ' more to continue');
-      setText('#preview-message-body', 'Your order must reach $' + Number(value).toFixed(2) + ' before checkout.');
-      setText('#rule-progress-note', '$29.00 of $' + Number(value).toFixed(2));
-      if (one('#rule-progress-fill')) one('#rule-progress-fill').style.width = Math.min(100, (29 / Math.max(1, Number(value))) * 100) + '%';
-    } else if (type === 'product') {
-      setText('#preview-message-title', 'Add ' + value + ' of this product');
-      setText('#preview-message-body', 'This product requires a minimum quantity of ' + value + '.');
-      setText('#rule-progress-note', 'Sample quantity 2 · minimum ' + value);
-      if (one('#rule-progress-fill')) one('#rule-progress-fill').style.width = Math.min(100, (2 / Math.max(1, Number(value))) * 100) + '%';
-    } else {
-      setText('#preview-message-title', 'Add ' + value + ' items to continue');
-      setText('#preview-message-body', 'Your cart must contain at least ' + value + ' items before checkout.');
-      setText('#rule-progress-note', '2 cart items · minimum ' + value);
-      if (one('#rule-progress-fill')) one('#rule-progress-fill').style.width = Math.min(100, (2 / Math.max(1, Number(value))) * 100) + '%';
-    }
+  function formatRuleValue(value, type) { return type === 'order' ? '$' + Number(value).toFixed(2) : String(value); }
+
+  function renderRuleTemplate(template, values) {
+    return template.replace(/{{minimum}}/g, values.minimum).replace(/{{maximum}}/g, values.maximum).replace(/{{current}}/g, values.current).replace(/{{remaining}}/g, values.remaining).replace(/{{product}}/g, 'Classic cotton tee').replace(/{{itemCount}}/g, values.current);
   }
+
+  function renderRulePreview() {
+    var type = state.configType;
+    var minimum = Math.max(0, Number(one('#minimum-input').value || config[type].min));
+    var maximum = Math.max(minimum, Number(one('#maximum-input').value || config[type].max));
+    var previewState = state.rulePreviewState;
+    var current;
+    if (previewState === 'minimum') current = type === 'order' ? Math.max(0, minimum - 21) : Math.max(0, minimum - 1);
+    else if (previewState === 'maximum') current = maximum + (type === 'order' ? 25 : type === 'cart' ? 5 : 1);
+    else current = minimum + (type === 'order' ? 15 : 0);
+    var remaining = previewState === 'maximum' ? Math.max(0, current - maximum) : Math.max(0, minimum - current);
+    var values = {
+      minimum: formatRuleValue(minimum, type),
+      maximum: formatRuleValue(maximum, type),
+      current: formatRuleValue(current, type),
+      remaining: formatRuleValue(remaining, type)
+    };
+    var template = previewState === 'maximum' ? one('#maximum-message').value : previewState === 'satisfied' ? 'This cart satisfies the rule.' : one('#minimum-message').value;
+    var text = renderRuleTemplate(template, values);
+    var parts = text.split(/(?<=[.!?])\s+/);
+    setText('#preview-message-title', parts.shift() || text);
+    setText('#preview-message-body', parts.join(' ') || (previewState === 'satisfied' ? 'Checkout is available.' : 'Update the cart to continue.'));
+    var alert = one('#rule-preview-alert');
+    alert.classList.toggle('success-state', previewState === 'satisfied');
+    alert.classList.toggle('error-state', previewState === 'maximum');
+    var progressBase = previewState === 'maximum' ? maximum : minimum;
+    one('#rule-progress-fill').style.width = Math.min(100, (current / Math.max(1, progressBase)) * 100) + '%';
+    if (type === 'order') {
+      setText('#rule-progress-note', formatRuleValue(current, type) + ' cart subtotal · allowed ' + values.minimum + '–' + values.maximum);
+      setText('#rule-total-label', 'Cart subtotal');
+      setText('#rule-total-value', formatRuleValue(current, type) + ' USD');
+      setText('#rule-cart-count', 'Cart · 2');
+    } else if (type === 'product') {
+      state.rulePreviewQuantity = current;
+      setText('#rule-preview-quantity', String(current));
+      setText('#rule-progress-note', 'Current quantity ' + current + ' · allowed ' + minimum + '–' + maximum);
+      setText('#rule-total-label', 'Product quantity');
+      setText('#rule-total-value', String(current));
+      setText('#rule-cart-count', 'Cart · ' + current);
+    } else {
+      setText('#rule-progress-note', 'Total items ' + current + ' · allowed ' + minimum + '–' + maximum);
+      setText('#rule-total-label', 'Total cart items');
+      setText('#rule-total-value', String(current));
+      setText('#rule-cart-count', 'Cart · ' + current);
+      var lines = one('#rule-cart-lines').querySelectorAll('span');
+      if (lines[0]) lines[0].textContent = 'Classic cotton tee × ' + Math.max(1, Math.ceil(current * .6));
+      if (lines[1]) lines[1].textContent = 'Canvas tote × ' + Math.max(0, Math.floor(current * .4));
+    }
+    setText('#rule-preview-cta', previewState === 'satisfied' ? 'Checkout' : previewState === 'maximum' ? 'Update cart' : 'Checkout unavailable');
+    one('#rule-preview-cta').disabled = previewState !== 'satisfied';
+  }
+
+  function updatePreviewFromMinimum() { renderRulePreview(); }
 
   function openPublishReview() {
     setText('#publish-rule-name', one('#rule-name').value);
@@ -468,88 +555,218 @@
   }
 
   function selectedOffer() {
-    var option = one('#offer-product').value.split('|');
-    return { name: option[0], price: Number(option[1]) };
+    if (!state.upsellProducts.length) return { id: 'fallback', name: 'Canvas tote', price: 24 };
+    state.upsellIndex = Math.max(0, Math.min(state.upsellIndex, state.upsellProducts.length - 1));
+    return state.upsellProducts[state.upsellIndex];
+  }
+
+  function updateUpsellSelectionSummary() {
+    var container = one('#upsell-selected-resources');
+    if (!container) return;
+    container.innerHTML = state.upsellProducts.map(function (product) { return '<span class="selected-chip">' + product.name + '</span>'; }).join('');
+    var picker = one('[data-open-resource-picker="upsell"]');
+    if (picker) picker.textContent = state.upsellSource === 'collection' ? 'Select a collection from Shopify' : 'Select products from Shopify';
+  }
+
+  function renderResourcePicker() {
+    var isCollection = state.resourcePickerType === 'collection';
+    var isRulePicker = state.resourcePickerContext === 'rule';
+    var term = one('#resource-picker-search').value.trim().toLowerCase();
+    var resources = (isCollection ? resourceCollections : resourceProducts).filter(function (resource) { return resource.name.toLowerCase().indexOf(term) !== -1; });
+    setText('#resource-picker-title', isCollection ? (isRulePicker ? 'Select collections' : 'Select a collection') : 'Select products');
+    one('#resource-picker-search').placeholder = isCollection ? 'Search collections' : 'Search products';
+    one('#resource-picker-filter').closest('.custom-select').classList.toggle('hide', isCollection);
+    one('#resource-picker-list').innerHTML = resources.map(function (resource) {
+      var checked = state.resourcePickerSelection.indexOf(resource.id) !== -1;
+      var meta = isCollection ? resource.count + ' products' : resource.detail + ' · $' + resource.price.toFixed(2);
+      var full = !isRulePicker && !isCollection && state.resourcePickerSelection.length >= 4 && !checked;
+      var inputType = isCollection && !isRulePicker ? 'radio' : 'checkbox';
+      return '<label class="resource-picker-row' + (full ? ' disabled' : '') + '"><input type="' + inputType + '" name="resource-picker-item" value="' + resource.id + '" ' + (checked ? 'checked' : '') + (full ? ' disabled' : '') + '><span class="resource-thumb">▧</span><span><strong>' + resource.name + '</strong><small>' + meta + '</small></span></label>';
+    }).join('') || '<div class="resource-picker-empty">No matching Shopify resources.</div>';
+    var count = state.resourcePickerSelection.length;
+    setText('#resource-picker-count', isRulePicker ? count + ' ' + (isCollection ? (count === 1 ? 'collection selected' : 'collections selected') : (count === 1 ? 'product selected' : 'products selected')) : isCollection ? count + ' ' + (count === 1 ? 'collection selected' : 'collections selected') : count + ' of 4 products selected');
+    one('[data-action="confirm-resource-picker"]').disabled = count === 0;
+  }
+
+  function openResourcePicker(context) {
+    state.resourcePickerContext = context || 'upsell';
+    if (state.resourcePickerContext === 'rule') {
+      var scope = (one('input[name="scope"]:checked') || {}).value || 'products';
+      state.resourcePickerType = scope === 'collections' ? 'collection' : 'products';
+      state.resourcePickerSelection = state.ruleResourceIds.slice();
+    } else {
+      state.resourcePickerType = one('#upsell-source').value;
+      state.upsellSource = state.resourcePickerType;
+      state.resourcePickerSelection = state.resourcePickerType === 'collection' ? [] : state.upsellProducts.map(function (product) { return product.id; });
+    }
+    one('#resource-picker-search').value = '';
+    renderResourcePicker();
+    showModal('#resource-picker-modal', '#resource-picker-search');
+  }
+
+  function confirmResourcePicker() {
+    if (state.resourcePickerContext === 'rule') {
+      state.ruleResourceIds = state.resourcePickerSelection.slice();
+      var source = state.resourcePickerType === 'collection' ? resourceCollections : resourceProducts;
+      var selected = state.ruleResourceIds.map(function (id) { return source.find(function (item) { return item.id === id; }); }).filter(Boolean);
+      one('#rule-selected-resources').innerHTML = selected.map(function (item) { return '<span class="selected-chip">' + item.name + '<button type="button" aria-label="Remove ' + item.name + '">×</button></span>'; }).join('');
+      var resourceLabel = state.resourcePickerType === 'collection' ? 'collection' : 'product';
+      setText('#resource-selection-copy', selected.length + ' ' + resourceLabel + (selected.length === 1 ? '' : 's') + ' selected');
+      setText('#rule-resource-picker-button', 'Change ' + resourceLabel + (resourceLabel === 'product' ? 's' : 's'));
+      hideModal('#resource-picker-modal');
+      toast('Shopify Resource Picker simulated: ' + selected.length + ' resources selected for the rule.');
+      return;
+    }
+    var limit = Math.max(1, Math.min(4, Number(one('#upsell-limit').value || 4)));
+    one('#upsell-limit').value = String(limit);
+    if (state.resourcePickerType === 'collection') {
+      var collection = resourceCollections.find(function (item) { return item.id === state.resourcePickerSelection[0]; });
+      state.upsellProducts = collection ? collection.products.map(function (id) { return resourceProducts.find(function (product) { return product.id === id; }); }).filter(Boolean).slice(0, limit) : [];
+      toast(collection ? collection.name + ' selected. Preview limited to ' + state.upsellProducts.length + ' products.' : 'Select a collection.');
+    } else {
+      state.upsellProducts = state.resourcePickerSelection.map(function (id) { return resourceProducts.find(function (product) { return product.id === id; }); }).filter(Boolean).slice(0, limit);
+      toast(state.upsellProducts.length + ' Shopify products selected for the upsell.');
+    }
+    state.upsellIndex = 0;
+    state.offerAdded = false;
+    updateUpsellSelectionSummary();
+    hideModal('#resource-picker-modal');
+    renderCartPreview();
   }
 
   function renderRuleMessage() {
-    var type = state.configType;
-    var minimum = Number(one('#minimum-input').value || config[type].min);
-    var maximum = Number(one('#maximum-input').value || config[type].max);
-    var remaining = type === 'order' ? '$' + Math.max(0, minimum - 29).toFixed(2) : String(Math.max(1, minimum));
-    var text = one('#message-input').value
-      .replace(/{{remaining}}/g, remaining)
-      .replace(/{{minimum}}/g, type === 'order' ? '$' + minimum.toFixed(2) : String(minimum))
-      .replace(/{{maximum}}/g, type === 'order' ? '$' + maximum.toFixed(2) : String(maximum))
-      .replace(/{{product}}/g, 'Classic cotton tee')
-      .replace(/{{itemCount}}/g, '2');
-    var parts = text.split(/(?<=[.!?])\s+/);
-    setText('#preview-message-title', parts.shift() || text);
-    setText('#preview-message-body', parts.join(' ') || 'The shopper sees this guidance before checkout.');
+    if (state.rulePreviewState === 'minimum') one('#minimum-message').value = one('#message-input').value;
+    renderRulePreview();
   }
 
   function selectCartModule(module) {
     state.cartModule = module;
-    var data = cartConfig[module];
+    var data = cartConfig[module] || cartConfig.progress;
     setText('#module-config-title', data.title);
     setText('#module-config-description', data.description);
-    one('#cart-style').value = data.style;
-    one('#cart-alignment').value = data.alignment;
-    syncCustomSelect(one('#cart-style'));
-    syncCustomSelect(one('#cart-alignment'));
     one('#cart-message').value = data.message;
     setText('#cart-message-help', data.help);
-    one('#offer-product-field').classList.toggle('hide', module !== 'offer');
-    all('[data-module-card]').forEach(function (card) { card.classList.toggle('active-module', card.getAttribute('data-module-card') === module); });
-    all('[data-cart-module]').forEach(function (button) { button.textContent = button.getAttribute('data-cart-module') === module ? 'Editing' : 'Configure'; });
+    one('#widget-heading').value = module === 'offer' || module === 'recommendations' ? 'You may also like' : data.title;
+    all('.upsell-only').forEach(function (field) { field.classList.toggle('hide', module !== 'offer'); });
+    updateUpsellSelectionSummary();
+    one('#cart-configurator').classList.remove('hide');
+    all('[data-widget]').forEach(function (card) { card.classList.toggle('active-module', card.getAttribute('data-widget') === module || (module === 'offer' && card.getAttribute('data-widget') === 'upsell')); });
+    all('[data-cart-module]').forEach(function (button) { button.textContent = button.getAttribute('data-cart-module') === module ? 'Editing' : 'Quick edit'; });
     renderCartPreview();
+  }
+
+  function showCartWorkspace(panel) {
+    state.cartWorkspace = panel;
+    all('[data-cart-workspace]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-workspace') === panel); });
+    all('[data-cart-workspace-panel]').forEach(function (section) { section.classList.toggle('hide', section.getAttribute('data-cart-workspace-panel') !== panel); });
+    if (panel !== 'widgets') one('#cart-configurator').classList.add('hide');
+    var target = one('[data-cart-workspace-panel="' + panel + '"]');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function renderCartPreview() {
     var progressEnabled = one('[data-module-switch="progress"]').classList.contains('on');
     var offerEnabled = one('[data-module-switch="offer"]').classList.contains('on');
     var summaryEnabled = one('[data-module-switch="summary"]').classList.contains('on');
-    var valid = state.cartState === 'valid' || state.cartSubtotal >= 50;
-    var remaining = Math.max(0, 50 - state.cartSubtotal);
+    var valid = state.cartState === 'valid' || state.cartSubtotal >= 75;
+    var remaining = Math.max(0, 75 - state.cartSubtotal);
     var offer = selectedOffer();
-    var offerMessage = one('#offer-preview-message');
-    if (!offerMessage) {
-      offerMessage = document.createElement('span');
-      offerMessage.id = 'offer-preview-message';
-      offerMessage.className = 'offer-message';
-      one('#offer-product-price').insertAdjacentElement('afterend', offerMessage);
-    }
-    cartConfig[state.cartModule].style = one('#cart-style').value;
-    cartConfig[state.cartModule].alignment = one('#cart-alignment').value;
     cartConfig[state.cartModule].message = one('#cart-message').value;
-    var message = one('#cart-message').value
+    var message = (state.cartModule === 'progress' ? one('#cart-message').value : cartConfig.progress.message)
       .replace(/{{remaining}}/g, '$' + remaining.toFixed(2))
       .replace(/{{product}}/g, offer.name)
-      .replace(/{{status}}/g, valid ? 'All purchase rules are satisfied' : '1 action needed');
+      .replace(/{{status}}/g, valid ? 'All purchase rules are satisfied' : '1 action needed')
+      .replace(/{{savings}}/g, '$' + state.cartDiscount.toFixed(2));
     var alert = one('#cart-preview-alert');
     alert.classList.toggle('hide', !progressEnabled);
-    [alert, one('#cart-offer-preview'), one('#cart-summary-preview')].forEach(function (element) { element.classList.remove('bar', 'compact', 'banner', 'contained', 'left'); });
-    var activePreview = state.cartModule === 'offer' ? one('#cart-offer-preview') : state.cartModule === 'summary' ? one('#cart-summary-preview') : alert;
-    activePreview.classList.add(one('#cart-style').value);
-    if (one('#cart-alignment').value !== 'full') activePreview.classList.add(one('#cart-alignment').value);
-    setText('#cart-progress-message', state.cartModule === 'progress' ? message : (valid ? 'Your cart is ready' : "You're $" + remaining.toFixed(2) + ' away from checkout'));
-    setText('#cart-progress-note', valid ? 'All active purchase rules are satisfied.' : 'Add another item or increase quantity.');
-    one('#cart-progress-fill').style.width = Math.min(100, (state.cartSubtotal / 50) * 100) + '%';
+    setText('#cart-progress-message', valid ? 'Free shipping unlocked' : message);
+    setText('#cart-progress-note', valid ? 'Your order qualifies for free shipping.' : 'Add another item or increase quantity.');
+    one('#cart-progress-fill').style.width = Math.min(100, (state.cartSubtotal / 75) * 100) + '%';
     one('#cart-offer-preview').classList.toggle('hide', !offerEnabled || state.offerAdded);
     setText('#offer-product-name', offer.name);
     setText('#offer-product-price', '$' + offer.price.toFixed(2));
-    setText('#offer-preview-message', state.cartModule === 'offer' ? message : cartConfig.offer.message.replace(/{{product}}/g, offer.name));
+    setText('#offer-preview-message', cartConfig.offer.message.replace(/{{product}}/g, offer.name));
+    var hasCarousel = state.upsellProducts.length > 1;
+    one('#upsell-prev').classList.toggle('hide', !hasCarousel);
+    one('#upsell-next').classList.toggle('hide', !hasCarousel);
+    one('#upsell-dots').classList.toggle('hide', !hasCarousel);
+    one('#upsell-dots').innerHTML = state.upsellProducts.map(function (product, index) { return '<button class="upsell-dot' + (index === state.upsellIndex ? ' active' : '') + '" data-upsell-index="' + index + '" aria-label="Show ' + product.name + '"></button>'; }).join('');
     one('#cart-summary-preview').classList.toggle('hide', !summaryEnabled);
-    setText('#summary-status', state.cartModule === 'summary' ? message : (valid ? 'Ready for checkout' : '1 action needed'));
-    one('#summary-status').style.color = valid ? 'var(--success)' : 'var(--danger)';
-    setText('#cart-subtotal', '$' + state.cartSubtotal.toFixed(2));
-    setText('#cart-count', 'Cart · ' + state.cartQuantity);
+    setText('#summary-status', '$' + state.cartDiscount.toFixed(2));
+    one('#summary-status').style.color = state.cartDiscount ? 'var(--success)' : 'var(--muted)';
+    setText('#cart-subtotal', '$' + Math.max(0, state.cartSubtotal - state.cartDiscount).toFixed(2) + ' USD');
+    setText('#cart-count', state.cartQuantity + (state.cartQuantity === 1 ? ' item' : ' items'));
     setText('#preview-quantity', String(state.cartQuantity));
-    one('#preview-checkout').textContent = valid ? 'Continue to checkout' : 'Checkout unavailable';
-    one('#preview-checkout').style.opacity = valid ? '1' : '.48';
+    one('#preview-checkout').textContent = 'Checkout · $' + Math.max(0, state.cartSubtotal - state.cartDiscount).toFixed(2);
+    one('#preview-checkout').style.opacity = state.cartQuantity ? '1' : '.48';
     one('#cart-preview-alert').style.background = valid ? 'var(--success-bg)' : '';
     one('#cart-preview-alert').style.borderColor = valid ? '#a6e1c7' : '';
     one('#cart-preview-alert').style.color = valid ? 'var(--success)' : '';
+    var discountSwitch = one('[data-preview-widget="discount"]');
+    var addonSwitch = one('[data-preview-widget="addons"]');
+    var giftSwitch = one('[data-preview-widget="gift"]');
+    var trustSwitch = one('[data-preview-widget="trust"]');
+    one('#discount-preview').classList.toggle('hide', discountSwitch && !discountSwitch.classList.contains('on'));
+    one('#addon-preview').classList.toggle('hide', addonSwitch && !addonSwitch.classList.contains('on'));
+    one('#gift-preview').classList.toggle('hide', !((giftSwitch && giftSwitch.classList.contains('on')) && valid));
+    one('#trust-preview').classList.toggle('hide', trustSwitch && !trustSwitch.classList.contains('on'));
+    [['header', '.drawer-header'], ['items', '.drawer-product'], ['quantity', '.sf-qty'], ['remove', '#remove-preview-item'], ['checkout', '#preview-checkout'], ['continue', '#continue-shopping']].forEach(function (pair) {
+      var control = one('[data-preview-widget="' + pair[0] + '"]');
+      var target = one(pair[1]);
+      if (control && target) target.classList.toggle('hide', !control.classList.contains('on'));
+    });
+    one('#empty-cart').classList.toggle('hide', state.cartState !== 'empty');
+    one('#populated-cart').classList.toggle('hide', state.cartState === 'empty' || state.cartState === 'loading' || state.cartState === 'error');
+    one('#drawer-loading').classList.toggle('hide', state.cartState !== 'loading');
+    one('#drawer-error').classList.toggle('hide', state.cartState !== 'error');
+    setText('#preview-mode-label', state.drawerMode === 'theme' ? 'Theme drawer + KartVantage widgets' : 'KartVantage customizable drawer');
+    var drawer = one('#cart-storefront');
+    drawer.classList.toggle('kv-drawer', state.drawerMode === 'kartvantage');
+    drawer.style.setProperty('--drawer-bg', one('#drawer-bg').value);
+    drawer.style.setProperty('--drawer-header-bg', one('#drawer-header-bg').value);
+    drawer.style.setProperty('--drawer-primary', one('#drawer-primary').value);
+    drawer.style.setProperty('--drawer-primary-text', one('#drawer-primary-text').value);
+    drawer.style.setProperty('--drawer-text', one('#drawer-text').value);
+    drawer.style.setProperty('--drawer-accent', one('#drawer-accent').value);
+    drawer.style.setProperty('--drawer-width', one('#drawer-width').value + 'px');
+    drawer.style.setProperty('--drawer-radius', one('#drawer-radius').value + 'px');
+    drawer.style.setProperty('--drawer-padding', one('#drawer-padding').value + 'px');
+    drawer.style.setProperty('--drawer-heading-size', one('#drawer-heading-size').value + 'px');
+    drawer.style.setProperty('--drawer-body-size', one('#drawer-body-size').value + 'px');
+    drawer.style.setProperty('--drawer-button-radius', one('#button-radius').value + 'px');
+    drawer.style.fontFamily = one('#drawer-font').value === 'Theme font' ? '' : one('#drawer-font').value;
+    drawer.classList.toggle('outline-buttons', one('#cart-style').value === 'Outline');
+    one('#preview-checkout').style.fontWeight = one('#drawer-button-weight').value;
+    setText('#heading-size-value', one('#drawer-heading-size').value);
+    setText('#body-size-value', one('#drawer-body-size').value);
+    setText('#drawer-width-value', one('#drawer-width').value);
+    setText('#drawer-radius-value', one('#drawer-radius').value);
+    setText('#drawer-padding-value', one('#drawer-padding').value);
+  }
+
+  function resetDrawerDesign() {
+    var defaults = { '#drawer-bg': '#ffffff', '#drawer-header-bg': '#f6f6f7', '#drawer-primary': '#081a33', '#drawer-primary-text': '#ffffff', '#drawer-text': '#202223', '#drawer-accent': '#96c43f', '#drawer-success': '#008060', '#drawer-warning': '#916a00', '#drawer-width': '420', '#drawer-radius': '12', '#drawer-padding': '18', '#drawer-heading-size': '20', '#drawer-body-size': '14' };
+    Object.keys(defaults).forEach(function (selector) { one(selector).value = defaults[selector]; });
+    one('#theme-colour-switch').classList.add('on');
+    one('#theme-colour-switch').setAttribute('aria-pressed', 'true');
+    renderCartPreview();
+  }
+
+  function resetTestCart() {
+    state.cartState = 'issue'; state.cartQuantity = 2; state.cartSubtotal = 50; state.cartDiscount = 0; state.offerAdded = false;
+    one('#test-cart-quantity').value = '2'; one('#test-cart-discount').value = ''; one('#preview-discount-input').value = '';
+    one('#discount-result').classList.add('hide');
+    renderCartPreview();
+  }
+
+  function addDisplayCondition() {
+    var builder = one('.condition-builder');
+    var button = builder.querySelector('[data-action="add-condition"]');
+    var row = document.createElement('div');
+    row.className = 'condition-row';
+    row.innerHTML = '<select aria-label="Condition field"><option>Cart contains product</option><option>Cart contains collection</option><option>Cart contains variant</option><option>Customer tag</option><option>Market</option></select><select aria-label="Condition operator"><option>contains</option><option>does not contain</option><option>equal to</option></select><input aria-label="Condition value" value="Classic cotton tee"><button class="btn mini danger-outline" data-action="remove-condition">Remove</button>';
+    builder.insertBefore(row, button);
+    row.querySelectorAll('select').forEach(enhanceSelect);
   }
 
   document.addEventListener('click', function (event) {
@@ -566,6 +783,27 @@
 
     var tabButton = event.target.closest('[data-rules-tab]');
     if (tabButton) { showRulesTab(tabButton.getAttribute('data-rules-tab')); return; }
+
+    var workspaceButton = event.target.closest('[data-cart-workspace]');
+    if (workspaceButton) { showCartWorkspace(workspaceButton.getAttribute('data-cart-workspace')); return; }
+
+    var previewStateButton = event.target.closest('[data-rule-preview-state]');
+    if (previewStateButton) {
+      state.rulePreviewState = previewStateButton.getAttribute('data-rule-preview-state');
+      all('[data-rule-preview-state]').forEach(function (button) { button.classList.toggle('active', button === previewStateButton); });
+      renderRulePreview();
+      return;
+    }
+
+    var resourcePickerButton = event.target.closest('[data-open-resource-picker]');
+    if (resourcePickerButton) {
+      if (resourcePickerButton.getAttribute('data-open-resource-picker') === 'upsell') {
+        openResourcePicker('upsell');
+      } else {
+        openResourcePicker('rule');
+      }
+      return;
+    }
 
     var configButton = event.target.closest('[data-config]');
     if (configButton) {
@@ -594,6 +832,8 @@
       if (target === 'minimum') one('#minimum-field').classList.toggle('hide', !switchButton.classList.contains('on'));
       if (target === 'maximum') one('#maximum-field').classList.toggle('hide', !switchButton.classList.contains('on'));
       if (switchButton.id === 'theme-colour-switch') one('#cart-storefront').classList.toggle('theme-custom', !switchButton.classList.contains('on'));
+      if (state.page === 'cart') renderCartPreview();
+      if (state.page === 'config') renderRulePreview();
       return;
     }
 
@@ -617,12 +857,13 @@
 
     var moduleButton = event.target.closest('[data-cart-module]');
     if (moduleButton) {
+      showCartWorkspace('widgets');
       selectCartModule(moduleButton.getAttribute('data-cart-module'));
       var editor = one('#cart-configurator');
       editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
       one('#module-config-title').focus({ preventScroll: true });
-      one('.configuration-shell').classList.add('attention');
-      window.setTimeout(function () { one('.configuration-shell').classList.remove('attention'); }, 850);
+      editor.classList.add('attention');
+      window.setTimeout(function () { editor.classList.remove('attention'); }, 850);
       return;
     }
 
@@ -672,20 +913,36 @@
     }
 
     if (event.target.closest('#qty-plus')) {
-      state.cartQuantity += 1; state.cartSubtotal += 14.5; renderCartPreview(); return;
+      state.cartQuantity += 1; state.cartSubtotal += 25; renderCartPreview(); return;
     }
     if (event.target.closest('#qty-minus')) {
-      if (state.cartQuantity > 1) { state.cartQuantity -= 1; state.cartSubtotal = Math.max(0, state.cartSubtotal - 14.5); }
+      if (state.cartQuantity > 1) { state.cartQuantity -= 1; state.cartSubtotal = Math.max(0, state.cartSubtotal - 25); }
       renderCartPreview(); return;
     }
     if (event.target.closest('#add-offer')) {
       var offer = selectedOffer(); state.cartSubtotal += offer.price; state.cartQuantity += 1; state.offerAdded = true; renderCartPreview(); toast(offer.name + ' added to the sample cart.'); return;
+    }
+    if (event.target.closest('[data-rule-qty="plus"]')) { state.rulePreviewState = 'satisfied'; state.rulePreviewQuantity += 1; renderRulePreview(); return; }
+    if (event.target.closest('[data-rule-qty="minus"]')) { state.rulePreviewState = 'minimum'; state.rulePreviewQuantity = Math.max(0, state.rulePreviewQuantity - 1); renderRulePreview(); return; }
+    if (event.target.closest('#remove-preview-item')) { state.cartState = 'empty'; state.cartQuantity = 0; state.cartSubtotal = 0; renderCartPreview(); toast('Sample item removed.'); return; }
+    if (event.target.closest('#preview-apply-discount')) {
+      var code = one('#preview-discount-input').value.trim();
+      if (!code) { toast('Enter a test discount code.'); return; }
+      state.cartDiscount = code.toUpperCase() === 'SAVE10' ? 5 : 0;
+      one('#discount-result').classList.toggle('hide', !state.cartDiscount);
+      setText('#discount-result', state.cartDiscount ? code.toUpperCase() + ' applied · −$5.00' : 'Code is invalid in this test cart');
+      renderCartPreview(); return;
     }
 
     if (event.target.closest('.shopify-links button')) { toast('This link belongs to Shopify Admin and sits outside the KartVantage demo.'); return; }
 
     if (event.target.closest('.store-pill')) { toast('Store selector opened for Northstar Goods.'); return; }
     if (event.target.closest('#notifications-button')) { toast('You have no new KartVantage notifications.'); return; }
+
+    var upsellDot = event.target.closest('[data-upsell-index]');
+    if (upsellDot) { state.upsellIndex = Number(upsellDot.getAttribute('data-upsell-index')); renderCartPreview(); return; }
+    if (event.target.closest('#upsell-prev')) { state.upsellIndex = (state.upsellIndex - 1 + state.upsellProducts.length) % state.upsellProducts.length; renderCartPreview(); return; }
+    if (event.target.closest('#upsell-next')) { state.upsellIndex = (state.upsellIndex + 1) % state.upsellProducts.length; renderCartPreview(); return; }
 
     var insightRange = event.target.closest('[data-page-panel="insights"] .header-actions .btn');
     if (insightRange) {
@@ -699,6 +956,8 @@
     if (name === 'toggle-settings-menu') toggleSettingsMobileMenu();
     else if (name === 'new-rule') openNewRuleChooser();
     else if (name === 'close-new-rule') cancelNewRuleChooser();
+    else if (name === 'close-resource-picker') hideModal('#resource-picker-modal');
+    else if (name === 'confirm-resource-picker') confirmResourcePicker();
     else if (name === 'support' || name === 'contact-support') showSettingsTab('support');
     else if (name === 'save-draft') toast('Draft saved. Nothing has been published.');
     else if (name === 'publish') openPublishReview();
@@ -710,7 +969,21 @@
       one('#publish-state-orb').className = 'status-orb';
       window.setTimeout(function () { renderPublishOutcome(state.publishOutcome); }, 650);
     }
-    else if (name === 'save-cart') toast('Cart drawer settings saved as a draft.');
+    else if (name === 'save-cart') { setText('#cart-publish-badge', 'Draft saved'); toast('Cart drawer settings saved as a draft.'); }
+    else if (name === 'publish-cart') { setText('#cart-publish-badge', 'Published'); one('#cart-publish-badge').className = 'badge published'; toast('Prototype publication confirmed. Version 4 is now the published preview.'); }
+    else if (name === 'unpublish-cart') { setText('#cart-publish-badge', 'Disabled'); toast('Cart Drawer features disabled in the prototype. The theme drawer remains available.'); }
+    else if (name === 'rollback-cart') toast('Version 3 restored as a new draft. Review it before publishing.');
+    else if (name === 'theme-help') toast('Compatibility request prepared with theme name, version and diagnostic snapshot.');
+    else if (name === 'reset-theme') { resetDrawerDesign(); toast('Theme defaults restored.'); }
+    else if (name === 'reset-test-cart') { resetTestCart(); toast('Test cart reset.'); }
+    else if (name === 'apply-test-discount') { one('#preview-discount-input').value = one('#test-cart-discount').value || 'SAVE10'; state.cartDiscount = 5; one('#discount-result').classList.remove('hide'); renderCartPreview(); toast('Test discount applied.'); }
+    else if (name === 'add-condition') { addDisplayCondition(); toast('Display condition added.'); }
+    else if (name === 'remove-condition') { var condition = action.closest('.condition-row'); if (condition) condition.remove(); toast('Display condition removed.'); }
+    else if (name === 'choose-markets') { one('#market-selection').classList.remove('hide'); toast('Market selector simulated: United States and Canada selected.'); }
+    else if (name === 'reset-widget') { one('#cart-message').value = cartConfig[state.cartModule].message; renderCartPreview(); toast('Widget defaults restored.'); }
+    else if (name === 'duplicate-widget') toast(cartConfig[state.cartModule].title + ' duplicated as a draft widget.');
+    else if (name === 'remove-widget') { var widget = one('[data-widget="' + (state.cartModule === 'offer' ? 'upsell' : state.cartModule) + '"]'); var widgetSwitch = widget && widget.querySelector('.switch'); if (widgetSwitch) { widgetSwitch.classList.remove('on'); widgetSwitch.setAttribute('aria-pressed', 'false'); } one('#cart-configurator').classList.add('hide'); renderCartPreview(); toast('Widget removed from the draft preview.'); }
+    else if (name === 'finish-widget') { one('#cart-configurator').classList.add('hide'); toast('Widget configuration saved to the draft.'); }
     else if (name === 'save-settings') toast('Settings saved.');
     else if (name === 'waitlist') toast('Interest recorded for this prototype.');
     else if (name === 'enable-embed') toast('Prototype: this would open the Shopify theme editor.');
@@ -820,20 +1093,70 @@
 
   all('input[name="scope"]').forEach(function (input) {
     input.addEventListener('change', function () {
-      all('.choice-row .choice').forEach(function (choice) { choice.classList.toggle('active', !!choice.querySelector('input:checked')); });
+      all('.scope-choices .choice').forEach(function (choice) { choice.classList.toggle('active', !!choice.querySelector('input:checked')); });
+      var scope = input.value;
+      one('#rule-resource-selection').classList.toggle('hide', scope === 'all');
+      setText('#resource-selection-title', scope === 'collections' ? 'Selected collections' : 'Selected products');
+      setText('#resource-selection-copy', scope === 'all' ? 'All eligible products are included.' : 'No resources selected.');
+      setText('#rule-resource-picker-button', scope === 'collections' ? 'Select collections' : 'Select products');
+      state.ruleResourceIds = [];
+      one('#rule-selected-resources').innerHTML = '';
     });
   });
 
-  one('#minimum-input').addEventListener('input', function () { updatePreviewFromMinimum(); renderRuleMessage(); });
-  one('#maximum-input').addEventListener('input', renderRuleMessage);
-  one('#message-input').addEventListener('input', renderRuleMessage);
-  ['#cart-style', '#cart-alignment', '#offer-product'].forEach(function (selector) {
-    one(selector).addEventListener('change', renderCartPreview);
+  all('input[name="customer-eligibility"], input[name="market-scope"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      var group = input.closest('.choice-row');
+      group.querySelectorAll('.choice').forEach(function (choice) { choice.classList.toggle('active', !!choice.querySelector('input:checked')); });
+      if (input.name === 'market-scope') one('#market-selection').classList.toggle('hide', input.value !== 'selected');
+    });
   });
+
+  all('input[name="drawer-mode"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      state.drawerMode = input.value;
+      all('.mode-option').forEach(function (option) { option.classList.toggle('active', !!option.querySelector('input:checked')); });
+      setText('#compatibility-copy', input.value === 'theme' ? 'App embed supported. Widget placement varies by theme drawer structure.' : 'KartVantage drawer will replace the visible theme drawer only after publication.');
+      one('#theme-colour-switch').disabled = input.value === 'theme';
+      renderCartPreview();
+      toast(input.value === 'theme' ? 'Existing theme drawer preserved.' : 'KartVantage drawer selected for this draft.');
+    });
+  });
+
+  one('#minimum-input').addEventListener('input', renderRulePreview);
+  one('#maximum-input').addEventListener('input', renderRulePreview);
+  one('#minimum-message').addEventListener('input', function () { if (state.rulePreviewState === 'minimum') renderRulePreview(); });
+  one('#maximum-message').addEventListener('input', function () { if (state.rulePreviewState === 'maximum') renderRulePreview(); });
+  one('#message-input').addEventListener('input', renderRuleMessage);
+  one('#rule-status').addEventListener('change', function () { setText('#config-status-badge', one('#rule-status').value === 'active' ? 'Active' : 'Draft'); one('#config-status-badge').className = one('#rule-status').value === 'active' ? 'badge published' : 'badge'; });
+  ['#cart-style', '#cart-alignment', '#drawer-font', '#drawer-button-weight', '#quantity-style', '#preview-state-select', '#preview-device-select'].forEach(function (selector) {
+    one(selector).addEventListener('change', function () {
+      if (selector === '#preview-state-select') state.cartState = one(selector).value;
+      if (selector === '#preview-device-select') { var mobile = one(selector).value === 'mobile'; one('#cart-storefront').classList.toggle('mobile', mobile); all('[data-cart-device]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-device') === one(selector).value); }); }
+      renderCartPreview();
+    });
+  });
+  ['#drawer-bg', '#drawer-header-bg', '#drawer-primary', '#drawer-primary-text', '#drawer-text', '#drawer-accent', '#drawer-success', '#drawer-warning', '#drawer-width', '#drawer-radius', '#drawer-padding', '#drawer-heading-size', '#drawer-body-size', '#button-radius'].forEach(function (selector) { one(selector).addEventListener('input', renderCartPreview); });
   one('#cart-message').addEventListener('input', renderCartPreview);
+  one('#upsell-source').addEventListener('change', function () { state.upsellSource = one('#upsell-source').value; updateUpsellSelectionSummary(); });
+  one('#upsell-limit').addEventListener('input', function () { var limit = Math.max(1, Math.min(4, Number(one('#upsell-limit').value || 4))); if (state.upsellProducts.length > limit) { state.upsellProducts = state.upsellProducts.slice(0, limit); state.upsellIndex = 0; updateUpsellSelectionSummary(); renderCartPreview(); } });
+  one('#resource-picker-search').addEventListener('input', renderResourcePicker);
+  one('#resource-picker-list').addEventListener('change', function (event) {
+    var item = event.target.closest('[name="resource-picker-item"]');
+    if (!item) return;
+    if (state.resourcePickerType === 'collection' && state.resourcePickerContext !== 'rule') state.resourcePickerSelection = item.checked ? [item.value] : [];
+    else if (item.checked && (state.resourcePickerContext === 'rule' || state.resourcePickerSelection.length < 4)) state.resourcePickerSelection.push(item.value);
+    else if (!item.checked) state.resourcePickerSelection = state.resourcePickerSelection.filter(function (id) { return id !== item.value; });
+    renderResourcePicker();
+  });
+  one('#test-cart-quantity').addEventListener('input', function () { state.cartQuantity = Math.max(0, Number(one('#test-cart-quantity').value || 0)); state.cartSubtotal = state.cartQuantity * 25; state.cartState = state.cartQuantity ? 'issue' : 'empty'; renderCartPreview(); });
+  one('#test-cart-state').addEventListener('change', function () { state.cartState = one('#test-cart-state').value; if (state.cartState === 'valid') { state.cartSubtotal = 90; state.cartQuantity = 4; } renderCartPreview(); });
+  one('#addon-checkbox').addEventListener('change', function () { state.cartSubtotal += one('#addon-checkbox').checked ? 5 : -5; renderCartPreview(); });
   one('#run-test').addEventListener('click', function () {
+    var selectedRule = one('#test-rule').selectedIndex;
     var subtotal = Number(one('#test-subtotal').value || 0);
-    var allowed = subtotal >= 50;
+    var items = Number(one('#test-items').value || 0);
+    var allowed = selectedRule === 0 ? subtotal >= 50 : selectedRule === 1 ? items >= 1 && items <= 4 : items >= 2 && items <= 20;
     var result = one('#test-result');
     result.querySelector('.result-x').textContent = allowed ? '✓' : '×';
     result.querySelector('.result-x').style.color = allowed ? 'var(--success)' : '';
@@ -841,8 +1164,9 @@
     result.querySelector('.badge').textContent = allowed ? 'Allowed' : 'Blocked';
     result.querySelector('.badge').className = allowed ? 'badge published' : 'badge warning';
     result.querySelector('.card-title').textContent = allowed ? 'Cart meets this rule' : 'Cart does not meet this rule';
-    result.querySelector('.sf-alert').innerHTML = allowed ? '<strong>Ready for checkout</strong>The order minimum has been satisfied.' : '<strong>Add $' + Math.max(0, 50 - subtotal).toFixed(2) + ' more to continue</strong>Your order must reach $50.00 before checkout.';
-    setText('#trace-subtotal', '$' + subtotal.toFixed(2));
+    var failCopy = selectedRule === 0 ? '<strong>Add $' + Math.max(0, 50 - subtotal).toFixed(2) + ' more to continue</strong>Your order must reach $50.00 before checkout.' : selectedRule === 1 ? '<strong>Product quantity is outside 1–4</strong>Update the selected product quantity.' : '<strong>Cart items must stay between 2 and 20</strong>Current total: ' + items + '.';
+    result.querySelector('.sf-alert').innerHTML = allowed ? '<strong>Ready for checkout</strong>The selected rule is satisfied.' : failCopy;
+    setText('#trace-subtotal', selectedRule === 0 ? '$' + subtotal.toFixed(2) : items + ' items');
     var rows = result.querySelectorAll('.trace-row strong');
     rows[rows.length - 1].textContent = allowed ? 'Allowed' : 'Blocked';
     rows[rows.length - 1].style.color = allowed ? 'var(--success)' : 'var(--danger)';
@@ -854,16 +1178,23 @@
   all('.switch').forEach(function (button) { button.setAttribute('aria-pressed', button.classList.contains('on') ? 'true' : 'false'); });
   one('#publish-modal').addEventListener('click', function (event) { if (event.target === one('#publish-modal')) closePublishReview(); });
   one('#new-rule-modal').addEventListener('click', function (event) { if (event.target === one('#new-rule-modal')) cancelNewRuleChooser(); });
+  one('#resource-picker-modal').addEventListener('click', function (event) { if (event.target === one('#resource-picker-modal')) hideModal('#resource-picker-modal'); });
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
     closeSettingsMobileMenu();
     if (!one('#publish-modal').classList.contains('hide')) closePublishReview();
     if (!one('#new-rule-modal').classList.contains('hide')) cancelNewRuleChooser();
+    if (!one('#resource-picker-modal').classList.contains('hide')) hideModal('#resource-picker-modal');
   });
   syncRouteFromLocation();
-  var offerMessage = document.createElement('span');
-  offerMessage.id = 'offer-preview-message';
-  offerMessage.textContent = 'Add this item and get closer to checkout';
-  one('#offer-product-price').parentNode.insertBefore(offerMessage, one('#offer-product-price'));
-  selectCartModule('progress');
+  showCartWorkspace('builder');
+  renderCartPreview();
+  window.setInterval(function () {
+    if (state.page !== 'cart' || state.upsellProducts.length < 2 || state.offerAdded || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var upsell = one('#cart-offer-preview');
+    if (!upsell || upsell.classList.contains('hide') || upsell.matches(':hover')) return;
+    state.upsellIndex = (state.upsellIndex + 1) % state.upsellProducts.length;
+    one('#upsell-slide').classList.add('is-changing');
+    window.setTimeout(function () { renderCartPreview(); one('#upsell-slide').classList.remove('is-changing'); }, 120);
+  }, 3200);
 })();
