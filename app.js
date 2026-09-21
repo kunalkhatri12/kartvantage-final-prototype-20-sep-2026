@@ -414,6 +414,24 @@
     one('#settings-mobile-trigger').setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
+  function closeCartMobileMenu() {
+    var menu = one('#cart-mobile-menu');
+    menu.classList.remove('open');
+    menu.setAttribute('aria-hidden', 'true');
+    menu.setAttribute('inert', '');
+    one('#cart-mobile-trigger').setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleCartMobileMenu() {
+    var menu = one('#cart-mobile-menu');
+    var open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (open) menu.removeAttribute('inert');
+    else menu.setAttribute('inert', '');
+    one('#cart-mobile-trigger').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   function showSettingsTab(tab) {
     state.settingsTab = tab;
     navigate('settings');
@@ -649,7 +667,12 @@
     one('#widget-heading').value = module === 'offer' || module === 'recommendations' ? 'You may also like' : data.title;
     all('.upsell-only').forEach(function (field) { field.classList.toggle('hide', module !== 'offer'); });
     updateUpsellSelectionSummary();
-    one('#cart-configurator').classList.remove('hide');
+    var editor = one('#cart-configurator');
+    var widgetKey = module === 'offer' ? 'upsell' : module;
+    var widgetCard = one('[data-widget="' + widgetKey + '"]');
+    if (widgetCard) widgetCard.insertAdjacentElement('afterend', editor);
+    editor.classList.add('inline-widget-editor');
+    editor.classList.remove('hide');
     all('[data-widget]').forEach(function (card) { card.classList.toggle('active-module', card.getAttribute('data-widget') === module || (module === 'offer' && card.getAttribute('data-widget') === 'upsell')); });
     all('[data-cart-module]').forEach(function (button) { button.textContent = button.getAttribute('data-cart-module') === module ? 'Editing' : 'Quick edit'; });
     renderCartPreview();
@@ -658,6 +681,9 @@
   function showCartWorkspace(panel) {
     state.cartWorkspace = panel;
     all('[data-cart-workspace]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-workspace') === panel); });
+    var workspaceNames = { builder: 'Builder', widgets: 'Widgets', rules: 'Display rules', preview: 'Live preview', test: 'Test cart', publish: 'Draft / Publish' };
+    setText('#cart-mobile-current', workspaceNames[panel] || 'Builder');
+    closeCartMobileMenu();
     all('[data-cart-workspace-panel]').forEach(function (section) { section.classList.toggle('hide', section.getAttribute('data-cart-workspace-panel') !== panel); });
     if (panel !== 'widgets') one('#cart-configurator').classList.add('hide');
     var target = one('[data-cart-workspace-panel="' + panel + '"]');
@@ -811,6 +837,7 @@
   document.addEventListener('click', function (event) {
     if (event.target.closest('.custom-select')) return;
     if (!event.target.closest('.settings-mobile-nav')) closeSettingsMobileMenu();
+    if (!event.target.closest('.cart-mobile-nav')) closeCartMobileMenu();
     var pageButton = event.target.closest('[data-page]');
     if (pageButton) {
       var page = pageButton.getAttribute('data-page');
@@ -1000,6 +1027,7 @@
     if (!action) return;
     var name = action.getAttribute('data-action');
     if (name === 'toggle-settings-menu') toggleSettingsMobileMenu();
+    else if (name === 'toggle-cart-menu') toggleCartMobileMenu();
     else if (name === 'new-rule') openNewRuleChooser();
     else if (name === 'close-new-rule') cancelNewRuleChooser();
     else if (name === 'close-resource-picker') hideModal('#resource-picker-modal');
@@ -1232,6 +1260,7 @@
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
     closeSettingsMobileMenu();
+    closeCartMobileMenu();
     if (!one('#publish-modal').classList.contains('hide')) closePublishReview();
     if (!one('#new-rule-modal').classList.contains('hide')) cancelNewRuleChooser();
     if (!one('#resource-picker-modal').classList.contains('hide')) hideModal('#resource-picker-modal');

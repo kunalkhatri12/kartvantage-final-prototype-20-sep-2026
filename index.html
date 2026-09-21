@@ -16,7 +16,7 @@
   <link rel="shortcut icon" type="image/png" href="./assets/kartvantage-favicon.png?v=brand-20260920b" />
   <link rel="apple-touch-icon" href="./assets/kartvantage-favicon.png?v=brand-20260920b" />
   <link rel="manifest" href="./site.webmanifest?v=brand-20260920" />
-  <link rel="stylesheet" href="./styles.css?v=29" />
+  <link rel="stylesheet" href="./styles.css?v=33" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -180,8 +180,14 @@
           <div class="mode-options"><label class="mode-option active"><input type="radio" name="drawer-mode" value="theme" checked><span class="mode-icon">◫</span><span><strong>Enhance existing theme cart</strong><small>Preserve Dawn’s cart design and add only compatible KartVantage widgets.</small><em>Theme layout remains read-only</em></span></label><label class="mode-option"><input type="radio" name="drawer-mode" value="kartvantage"><span class="mode-icon">KV</span><span><strong>Use KartVantage cart</strong><small>Replace the visible drawer with a fully customizable, advanced cart experience.</small><em>Full design and layout controls</em></span></label></div>
           <div class="compatibility-strip"><span><strong>Dawn · Published theme</strong><small id="compatibility-copy">Snapshot ready. Theme structure is read-only; compatible widgets can be configured here.</small></span><div class="header-actions"><button class="btn small" data-action="refresh-theme-preview">Refresh snapshot</button><button class="btn small" data-action="theme-help">Compatibility help</button></div></div>
         </div>
-        <nav class="card builder-tabs" aria-label="Cart drawer builder"><button class="active" data-cart-workspace="builder">Builder</button><button data-cart-workspace="widgets">Widgets</button><button data-cart-workspace="rules">Display rules</button><button data-cart-workspace="preview">Live preview</button><button data-cart-workspace="test">Test cart</button><button data-cart-workspace="publish">Draft / Publish</button></nav>
-        <div class="cart-builder-layout">
+        <div class="cart-mobile-nav">
+          <span class="settings-mobile-label">Cart drawer section</span>
+          <button type="button" class="settings-mobile-trigger" id="cart-mobile-trigger" data-action="toggle-cart-menu" aria-expanded="false" aria-controls="cart-mobile-menu"><span id="cart-mobile-current">Builder</span><span class="settings-mobile-chevron" aria-hidden="true"></span></button>
+          <div class="settings-mobile-menu" id="cart-mobile-menu" role="menu" aria-hidden="true" inert><button class="active" role="menuitem" data-cart-workspace="builder">Builder</button><button role="menuitem" data-cart-workspace="widgets">Widgets</button><button role="menuitem" data-cart-workspace="rules">Display rules</button><button role="menuitem" data-cart-workspace="preview">Live preview</button><button role="menuitem" data-cart-workspace="test">Test cart</button><button role="menuitem" data-cart-workspace="publish">Draft / Publish</button></div>
+        </div>
+        <div class="cart-section-layout">
+          <nav class="card builder-tabs" aria-label="Cart drawer builder"><button class="active" data-cart-workspace="builder">Builder</button><button data-cart-workspace="widgets">Widgets</button><button data-cart-workspace="rules">Display rules</button><button data-cart-workspace="preview">Live preview</button><button data-cart-workspace="test">Test cart</button><button data-cart-workspace="publish">Draft / Publish</button></nav>
+          <div class="cart-builder-layout">
           <div class="cart-workspace">
             <section data-cart-workspace-panel="builder">
               <div data-drawer-mode-panel="theme">
@@ -250,6 +256,7 @@
             </div>
             <div class="preview-foot"><strong>Prototype preview:</strong> the theme drawer is a synchronized local snapshot. Production will refresh compatible storefront evidence and hand theme-native changes to Shopify’s theme editor.</div>
           </aside>
+          </div>
         </div>
       </section>
 
@@ -368,6 +375,6 @@
     </div>
   </div>
   <div id="toast-region" aria-live="polite"></div>
-  <script src="./app.js?v=29"></script>
+  <script src="./app.js?v=33"></script>
 </body>
 </html>
