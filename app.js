@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, rulePreviewState: 'minimum', rulePreviewQuantity: 2, ruleResourceIds: [], cartModule: 'progress', cartWorkspace: 'builder', drawerMode: 'theme', previewSurface: 'theme', cartDevice: 'desktop', cartState: 'issue', cartQuantity: 2, cartSubtotal: 50, cartDiscount: 0, offerAdded: false, upsellIndex: 0, upsellSource: 'products', upsellProducts: [{ id: 'p_canvas', name: 'Canvas tote', price: 24 }, { id: 'p_mug', name: 'Travel mug', price: 18 }, { id: 'p_wrap', name: 'Gift wrap', price: 6 }], resourcePickerContext: 'upsell', resourcePickerType: 'products', resourcePickerSelection: [], publishOutcome: 'confirmed', allRulesSelected: false };
+  var state = { page: 'overview', role: 'merchant', rulesTab: 'library', settingsTab: 'general', configType: 'order', ruleId: null, pendingRuleId: null, rulePreviewState: 'minimum', rulePreviewQuantity: 2, ruleResourceIds: [], cartModule: 'progress', cartWorkspace: 'start', cartFeatureGroup: 'foundation', cartPreset: 'guided', drawerMode: 'theme', previewSurface: 'theme', cartDevice: 'desktop', cartState: 'issue', cartQuantity: 2, cartSubtotal: 50, cartDiscount: 0, offerAdded: false, upsellIndex: 0, upsellSource: 'products', upsellProducts: [{ id: 'p_canvas', name: 'Canvas tote', price: 24 }, { id: 'p_mug', name: 'Travel mug', price: 18 }, { id: 'p_wrap', name: 'Gift wrap', price: 6 }], resourcePickerContext: 'upsell', resourcePickerType: 'products', resourcePickerSelection: [], publishOutcome: 'confirmed', allRulesSelected: false };
   var resourceProducts = [
     { id: 'p_canvas', name: 'Canvas tote', price: 24, detail: 'Accessories · 18 available' },
     { id: 'p_mug', name: 'Travel mug', price: 18, detail: 'Drinkware · 32 available' },
@@ -83,6 +83,12 @@
     content: { title: 'Custom content', description: 'Add store-specific text, image, link or button.', message: 'Orders ship within two business days', help: 'Use concise, accurate storefront content.' },
     checkout: { title: 'Checkout button', description: 'Configure text, style, full width, total and disabled state.', message: 'Checkout', help: 'Checkout availability continues to follow authoritative validation.' },
     continue: { title: 'Continue shopping', description: 'Choose link style and destination.', message: 'Continue shopping', help: 'Destination can be previous page, home, collection or a custom URL.' }
+  };
+  var featureGroups = {
+    foundation: { title: 'Cart foundation', copy: 'Configure the essential structure and controls shoppers use in every cart.' },
+    motivate: { title: 'Motivate purchase', copy: 'Guide shoppers with progress and clear purchase-rule feedback.' },
+    grow: { title: 'Grow the order', copy: 'Add focused merchandising without turning the cart into a catalogue.' },
+    checkout: { title: 'Checkout confidence', copy: 'Make savings, trust and the path to checkout clear.' }
   };
 
   function all(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
@@ -668,24 +674,67 @@
     all('.upsell-only').forEach(function (field) { field.classList.toggle('hide', module !== 'offer'); });
     updateUpsellSelectionSummary();
     var editor = one('#cart-configurator');
-    var widgetKey = module === 'offer' ? 'upsell' : module;
-    var widgetCard = one('[data-widget="' + widgetKey + '"]');
-    if (widgetCard) widgetCard.insertAdjacentElement('afterend', editor);
-    editor.classList.add('inline-widget-editor');
+    one('#feature-studio-home').classList.add('hide');
+    one('#feature-group-view').classList.add('hide');
+    editor.classList.remove('inline-widget-editor');
     editor.classList.remove('hide');
     all('[data-widget]').forEach(function (card) { card.classList.toggle('active-module', card.getAttribute('data-widget') === module || (module === 'offer' && card.getAttribute('data-widget') === 'upsell')); });
-    all('[data-cart-module]').forEach(function (button) { button.textContent = button.getAttribute('data-cart-module') === module ? 'Editing' : 'Quick edit'; });
     renderCartPreview();
+  }
+
+  function filterFeatureRows() {
+    all('.widget-row[data-feature-group]').forEach(function (row) {
+      var wrongGroup = row.getAttribute('data-feature-group') !== state.cartFeatureGroup;
+      var unavailable = state.drawerMode === 'theme' && row.classList.contains('kv-only-widget');
+      row.classList.toggle('hide', wrongGroup || unavailable);
+    });
+  }
+
+  function showFeatureJourney() {
+    one('#cart-configurator').classList.add('hide');
+    one('#feature-group-view').classList.add('hide');
+    one('#feature-studio-home').classList.remove('hide');
+  }
+
+  function showFeatureGroup(group) {
+    state.cartFeatureGroup = featureGroups[group] ? group : 'foundation';
+    var data = featureGroups[state.cartFeatureGroup];
+    setText('#feature-group-title', data.title);
+    setText('#feature-group-copy', data.copy);
+    filterFeatureRows();
+    var visibleCount = all('.widget-row[data-feature-group="' + state.cartFeatureGroup + '"]:not(.hide)').length;
+    setText('#feature-group-count', visibleCount + (visibleCount === 1 ? ' feature' : ' features'));
+    one('#feature-studio-home').classList.add('hide');
+    one('#cart-configurator').classList.add('hide');
+    one('#feature-group-view').classList.remove('hide');
+    one('#feature-group-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function selectCartPreset(preset, button) {
+    state.cartPreset = preset;
+    var recipe = button && button.closest('[data-drawer-mode-panel]');
+    if (recipe) recipe.querySelectorAll('[data-cart-preset]').forEach(function (item) { item.classList.toggle('active', item === button); });
+    var labels = {
+      guided: ['Recommended enhancements selected', 'Four compatible features · about 3 minutes to review'],
+      minimal: ['Minimal theme layer selected', 'Two compatible features · lowest theme impact'],
+      conversion: ['Conversion-ready recipe selected', 'Eight focused features · designed for higher cart value'],
+      essential: ['Clean essentials selected', 'Required structure and checkout · fastest setup'],
+      custom: ['Custom foundation selected', 'Required cart structure only · add features when ready']
+    };
+    var copy = labels[preset] || labels.guided;
+    setText('#studio-recipe-name', copy[0]);
+    setText('#studio-recipe-copy', copy[1]);
   }
 
   function showCartWorkspace(panel) {
     state.cartWorkspace = panel;
     all('[data-cart-workspace]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-cart-workspace') === panel); });
-    var workspaceNames = { builder: 'Builder', widgets: 'Widgets', rules: 'Display rules', preview: 'Live preview', test: 'Test cart', publish: 'Draft / Publish' };
-    setText('#cart-mobile-current', workspaceNames[panel] || 'Builder');
+    var workspaceNames = { start: 'Start', builder: 'Design', widgets: 'Features', test: 'Test', publish: 'Publish' };
+    setText('#cart-mobile-current', workspaceNames[panel] || 'Start');
     closeCartMobileMenu();
     all('[data-cart-workspace-panel]').forEach(function (section) { section.classList.toggle('hide', section.getAttribute('data-cart-workspace-panel') !== panel); });
-    if (panel !== 'widgets') one('#cart-configurator').classList.add('hide');
+    if (panel === 'widgets') showFeatureJourney();
+    else one('#cart-configurator').classList.add('hide');
     var target = one('[data-cart-workspace-panel="' + panel + '"]');
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -710,8 +759,10 @@
 
   function updateDrawerModeUI() {
     all('[data-drawer-mode-panel]').forEach(function (panel) { panel.classList.toggle('hide', panel.getAttribute('data-drawer-mode-panel') !== state.drawerMode); });
-    all('.kv-only-widget').forEach(function (widget) { widget.classList.toggle('hide', state.drawerMode === 'theme'); });
-    setText('#widget-mode-note', state.drawerMode === 'theme' ? 'Theme structure stays read-only. Add and arrange compatible KartVantage widgets.' : 'Configure the full KartVantage drawer structure, content and widgets.');
+    all('.kv-stage').forEach(function (stage) { stage.classList.toggle('hide', state.drawerMode === 'theme'); });
+    filterFeatureRows();
+    setText('#feature-journey-title', state.drawerMode === 'theme' ? 'Enhance the cart in three moments' : 'Build the cart in four moments');
+    setText('#widget-mode-note', state.drawerMode === 'theme' ? 'Choose a moment to configure the four enhancements supported by your theme cart.' : 'Choose a moment instead of scanning a long widget list. The preview stays live while you configure.');
     one('#theme-colour-switch').disabled = state.drawerMode === 'theme';
   }
 
@@ -852,6 +903,12 @@
 
     var workspaceButton = event.target.closest('[data-cart-workspace]');
     if (workspaceButton) { showCartWorkspace(workspaceButton.getAttribute('data-cart-workspace')); return; }
+
+    var presetButton = event.target.closest('[data-cart-preset]');
+    if (presetButton) { selectCartPreset(presetButton.getAttribute('data-cart-preset'), presetButton); return; }
+
+    var featureStage = event.target.closest('.feature-stage[data-feature-group]');
+    if (featureStage) { showCartWorkspace('widgets'); showFeatureGroup(featureStage.getAttribute('data-feature-group')); return; }
 
     var previewStateButton = event.target.closest('[data-rule-preview-state]');
     if (previewStateButton) {
@@ -1056,10 +1113,14 @@
     else if (name === 'add-condition') { addDisplayCondition(); toast('Display condition added.'); }
     else if (name === 'remove-condition') { var condition = action.closest('.condition-row'); if (condition) condition.remove(); toast('Display condition removed.'); }
     else if (name === 'choose-markets') { one('#market-selection').classList.remove('hide'); toast('Market selector simulated: United States and Canada selected.'); }
-    else if (name === 'reset-widget') { one('#cart-message').value = cartConfig[state.cartModule].message; renderCartPreview(); toast('Widget defaults restored.'); }
+    else if (name === 'back-to-feature-journey') showFeatureJourney();
+    else if (name === 'back-to-feature-group') showFeatureGroup(state.cartFeatureGroup);
+    else if (name === 'preview-recipes') showCartWorkspace('start');
+    else if (name === 'apply-smart-recipe') { ['progress', 'offer', 'summary'].forEach(function (module) { var control = one('[data-module-switch="' + module + '"]'); if (control) { control.classList.add('on'); control.setAttribute('aria-pressed', 'true'); } }); var trust = one('[data-preview-widget="trust"]'); if (trust) { trust.classList.add('on'); trust.setAttribute('aria-pressed', 'true'); } renderCartPreview(); toast('Smart recipe applied to this draft. Review each cart moment before publishing.'); }
+    else if (name === 'reset-widget') { one('#cart-message').value = cartConfig[state.cartModule].message; renderCartPreview(); toast('Feature defaults restored.'); }
     else if (name === 'duplicate-widget') toast(cartConfig[state.cartModule].title + ' duplicated as a draft widget.');
-    else if (name === 'remove-widget') { var widget = one('[data-widget="' + (state.cartModule === 'offer' ? 'upsell' : state.cartModule) + '"]'); var widgetSwitch = widget && widget.querySelector('.switch'); if (widgetSwitch) { widgetSwitch.classList.remove('on'); widgetSwitch.setAttribute('aria-pressed', 'false'); } one('#cart-configurator').classList.add('hide'); renderCartPreview(); toast('Widget removed from the draft preview.'); }
-    else if (name === 'finish-widget') { one('#cart-configurator').classList.add('hide'); toast('Widget configuration saved to the draft.'); }
+    else if (name === 'remove-widget') { var widget = one('[data-widget="' + (state.cartModule === 'offer' ? 'upsell' : state.cartModule) + '"]'); var widgetSwitch = widget && widget.querySelector('.switch'); if (widgetSwitch) { widgetSwitch.classList.remove('on'); widgetSwitch.setAttribute('aria-pressed', 'false'); } showFeatureGroup(state.cartFeatureGroup); renderCartPreview(); toast('Feature removed from the draft preview.'); }
+    else if (name === 'finish-widget') { showFeatureGroup(state.cartFeatureGroup); toast('Feature saved to the draft.'); }
     else if (name === 'save-settings') toast('Settings saved.');
     else if (name === 'waitlist') toast('Interest recorded for this prototype.');
     else if (name === 'enable-embed') toast('Prototype: this would open the Shopify theme editor.');
@@ -1194,6 +1255,8 @@
       all('.mode-option').forEach(function (option) { option.classList.toggle('active', !!option.querySelector('input:checked')); });
       setText('#compatibility-copy', input.value === 'theme' ? 'Theme mode supports progress, rule alerts, summary and upsells. Theme structure remains read-only.' : 'KartVantage mode unlocks the complete design, layout and widget system.');
       updateDrawerModeUI();
+      var defaultPreset = input.value === 'theme' ? one('[data-cart-preset="guided"]') : one('[data-cart-preset="conversion"]');
+      if (defaultPreset) selectCartPreset(defaultPreset.getAttribute('data-cart-preset'), defaultPreset);
       setPreviewSurface(input.value === 'theme' ? 'theme' : 'kartvantage');
       renderCartPreview();
       toast(input.value === 'theme' ? 'Existing theme drawer preserved.' : 'KartVantage drawer selected for this draft.');
@@ -1266,7 +1329,7 @@
     if (!one('#resource-picker-modal').classList.contains('hide')) hideModal('#resource-picker-modal');
   });
   syncRouteFromLocation();
-  showCartWorkspace('builder');
+  showCartWorkspace('start');
   updateDrawerModeUI();
   setCartDevice('desktop');
   setPreviewSurface('theme');
