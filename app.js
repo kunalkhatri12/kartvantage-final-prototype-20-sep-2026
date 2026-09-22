@@ -376,9 +376,15 @@
       panel.classList.toggle('hide', panel.getAttribute('data-rules-panel') !== tab);
     });
     var toggle = one('#rules-view-toggle');
-    toggle.textContent = tab === 'test' ? 'Open rule library' : 'Open test lab';
-    toggle.setAttribute('data-rules-tab', tab === 'test' ? 'library' : 'test');
+    var returnsToLibrary = tab === 'test';
+    setText('#rules-view-toggle .rule-action-icon', returnsToLibrary ? '▤' : '✓');
+    setText('#rules-view-toggle strong', returnsToLibrary ? 'Open rule library' : 'Open test lab');
+    setText('#rules-view-toggle small', returnsToLibrary ? 'Return to create and manage purchase rules.' : 'Try rule states against a sample cart before publishing.');
+    setText('#rules-view-toggle .rule-action-arrow', returnsToLibrary ? '←' : '→');
+    toggle.classList.toggle('is-back', returnsToLibrary);
+    toggle.setAttribute('data-rules-tab', returnsToLibrary ? 'library' : 'test');
     one('#create-rule-button').classList.toggle('hide', tab === 'test');
+    toggle.closest('.rules-header-actions').classList.toggle('is-single', returnsToLibrary);
     if (alreadyOnRules) animateHorizontal(one('[data-rules-panel="' + tab + '"]'), motionDirection(motionOrders.rules, previousTab, tab));
   }
 

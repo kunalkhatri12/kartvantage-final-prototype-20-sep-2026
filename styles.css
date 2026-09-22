@@ -104,6 +104,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .page-header p { margin: 7px 0 0; color: var(--muted); max-width: 700px; }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .rules-header-actions { width: min(620px, 52%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.rules-header-actions.is-single { grid-template-columns: 1fr; }
 .rule-action-card { min-width: 0; min-height: 76px; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 11px 12px; border: 1px solid var(--border); border-radius: 11px; background: #fff; color: var(--text); text-align: left; box-shadow: 0 1px 2px rgba(16,24,40,.05); transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast); }
 .rule-action-card:hover { border-color: #8fa8c1; box-shadow: 0 5px 14px rgba(16,24,40,.08); transform: translateY(-1px); }
 .rule-action-card:active { transform: translateY(0) scale(.99); }
@@ -113,6 +114,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .rule-action-icon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #eef2f5; color: var(--navy); font-weight: 800; }
 .rule-action-arrow { color: var(--muted); font-size: 17px; transition: transform var(--motion-fast); }
 .rule-action-card:hover .rule-action-arrow { transform: translateX(2px); }
+.rule-action-card.is-back:hover .rule-action-arrow { transform: translateX(-2px); }
 
 .btn { min-height: 38px; padding: 8px 14px; border-radius: 8px; font-weight: 650; border: 1px solid var(--border-strong); background: #fff; color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: transform var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; text-decoration: none; }
 .btn:hover { background: #f7f8f9; border-color: #aeb4bd; }
